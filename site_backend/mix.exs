@@ -24,7 +24,12 @@ defmodule SiteBackend.MixProject do
     [
       {:cowboy, "~> 2.10"},
       {:plug, "~> 1.14"},
-      {:plug_cowboy, "~> 2.6"}
+      {:plug_cowboy, "~> 2.6"},
+      {:ecto_sql, "~> 3.10"},
+      {:postgrex, ">= 0.0.0"},
+      {:jason, "~> 1.4"},
+      {:joken, "~> 2.6"},
+      {:bcrypt_elixir, "~> 3.0"}
     ]
   end
 end

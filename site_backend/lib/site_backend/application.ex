@@ -5,15 +5,12 @@ defmodule SiteBackend.Application do
 
   use Application
 
-  @impl true
   def start(_type, _args) do
     children = [
-      # Starts a worker by calling: SiteBackend.Worker.start_link(arg)
-      # {SiteBackend.Worker, arg}
+      SiteBackend.Repo,
+      {Plug.Cowboy, scheme: :http, plug: SiteBackend.Router, options: [port: String.to_integer(System.get_env("PORT") || "4000")]}
     ]
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
     opts = [strategy: :one_for_one, name: SiteBackend.Supervisor]
     Supervisor.start_link(children, opts)
   end

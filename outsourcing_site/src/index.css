@@ -109,3 +109,20 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Added layout helpers for the new Primer-based App */
+
+.App-hero {
+  padding: 48px 0;
+}
+
+@media (max-width: 768px) {
+  #root {
+    padding: 0 16px;
+  }
+}
+
+/* make ActionList items clickable area larger */
+.ActionListItem {
+  cursor: pointer;
+}
