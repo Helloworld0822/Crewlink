@@ -16,6 +16,7 @@ import {
 } from '@primer/react'
 import { SearchIcon } from '@primer/octicons-react'
 import './App.css'
+import LoginPanel from './LoginPanel'
 
 type Project = {
   id: string
@@ -98,6 +99,8 @@ function ProjectCard({ p }: { p: Project }) {
 export default function App(): JSX.Element {
   const [query, setQuery] = useState('')
   const [skillFilter, setSkillFilter] = useState<string | null>(null)
+  const [showLogin, setShowLogin] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'))
 
   const skills = useMemo(() => {
     const s = new Set<string>()
@@ -123,7 +126,11 @@ export default function App(): JSX.Element {
               <Text color="fg.muted">프리랜서와 클라이언트를 연결하는 외주 중개 플랫폼 (Primer 스타일)</Text>
             </Box>
             <Box>
-              <Button sx={{ mr: 2 }} variant="invisible">로그인</Button>
+              {!localStorage.getItem('token') ? (
+                <Button sx={{ mr: 2 }} variant="invisible" onClick={() => setShowLogin(true)}>로그인</Button>
+              ) : (
+                <Button sx={{ mr: 2 }} variant="invisible" onClick={() => { localStorage.removeItem('token'); setIsLoggedIn(false); }}>로그아웃</Button>
+              )}
               <Button variant="primary">회원가입</Button>
             </Box>
           </Box>
