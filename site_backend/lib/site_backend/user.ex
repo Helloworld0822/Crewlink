@@ -5,8 +5,10 @@ defmodule SiteBackend.User do
   @primary_key {:id, :binary_id, autogenerate: true}
   schema "users" do
     field :email, :string
+    field :password, :string, virtual: true
     field :password_hash, :string
     field :name, :string
+    has_many :logins, SiteBackend.Login
 
     timestamps()
   end
