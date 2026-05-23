@@ -2,19 +2,14 @@ import React, { useMemo, useState } from 'react'
 import {
   ThemeProvider,
   BaseStyles,
-  Box,
   Heading,
   Text,
   Button,
   TextInput,
   Avatar,
-  Label,
-  ActionList,
-  AvatarStack,
-  StyledOcticon,
+  Box,
   Badge,
 } from '@primer/react'
-import { SearchIcon } from '@primer/octicons-react'
 import './App.css'
 import LoginPanel from './LoginPanel'
 
@@ -96,6 +91,27 @@ function ProjectCard({ p }: { p: Project }) {
   )
 }
 
+class ErrorBoundary extends React.Component<{children:any}, {error:any}> {
+  constructor(props:any){
+    super(props)
+    this.state = { error: null }
+  }
+  static getDerivedStateFromError(error:any) {
+    return { error }
+  }
+  render(){
+    if(this.state.error){
+      return (
+        <div style={{padding:20}}>
+          <h2>앱에서 오류가 발생했습니다</h2>
+          <pre>{String(this.state.error)}</pre>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 export default function App(): JSX.Element {
   const [query, setQuery] = useState('')
   const [skillFilter, setSkillFilter] = useState<string | null>(null)
@@ -119,111 +135,90 @@ export default function App(): JSX.Element {
   return (
     <ThemeProvider>
       <BaseStyles>
-        <Box px={4} py={4}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-            <Box>
+        <div style={{padding: 16}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16}}>
+            <div>
               <Heading as="h1">Outsourcing Hub</Heading>
               <Text color="fg.muted">프리랜서와 클라이언트를 연결하는 외주 중개 플랫폼 (Primer 스타일)</Text>
-            </Box>
-            <Box>
+            </div>
+            <div>
               {!localStorage.getItem('token') ? (
-                <Button sx={{ mr: 2 }} variant="invisible" onClick={() => setShowLogin(true)}>로그인</Button>
+                <Button style={{marginRight: 8}} variant="invisible" onClick={() => setShowLogin(true)}>로그인</Button>
               ) : (
-                <Button sx={{ mr: 2 }} variant="invisible" onClick={() => { localStorage.removeItem('token'); setIsLoggedIn(false); }}>로그아웃</Button>
+                <Button style={{marginRight: 8}} variant="invisible" onClick={() => { localStorage.removeItem('token'); setIsLoggedIn(false); }}>로그아웃</Button>
               )}
               <Button variant="primary">회원가입</Button>
-            </Box>
-          </Box>
+            </div>
+          </div>
 
-          <Box display="grid" gridTemplateColumns={[ '1fr', '320px 1fr' ]} gap={4}>
-            <Box>
-              <Box
-                borderWidth={1}
-                borderStyle="solid"
-                borderColor="border.muted"
-                borderRadius={6}
-                padding={3}
-                backgroundColor="canvas.default"
-              >
-                <Heading as="h2" sx={{ fontSize: 1 }}>검색</Heading>
-                <Box sx={{ mt: 2 }}>
-                  <Label>프로젝트 검색</Label>
+          <div style={{display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16}}>
+            <div>
+              <div style={{border: '1px solid var(--border)', borderRadius: 8, padding: 12, background: 'var(--bg)'}}>
+                <Heading as="h2">검색</Heading>
+                <div style={{marginTop: 8}}>
+                  <label>프로젝트 검색</label>
                   <TextInput
-                    leadingVisual={() => <StyledOcticon icon={SearchIcon} />}
                     placeholder="검색어를 입력하세요 (예: React)"
                     value={query}
                     onChange={(e: any) => setQuery(e.target.value)}
                   />
-                </Box>
+                </div>
 
-                <Box sx={{ mt: 3 }}>
-                  <Heading as="h3" sx={{ fontSize: 1 }}>기술 필터</Heading>
-                  <ActionList>
+                <div style={{marginTop: 12}}>
+                  <Heading as="h3">기술 필터</Heading>
+                  <div>
                     {['(전체)', ...skills].map((s) => (
-                      <ActionList.Item
-                        key={s}
-                        onSelect={() => setSkillFilter(s === '(전체)' ? null : s)}
-                        aria-current={skillFilter === s}
-                      >
-                        <ActionList.LeadingVisual>
-                          <Avatar />
-                        </ActionList.LeadingVisual>
-                        <ActionList.TrailingVisual>{skillFilter === s || (s === '(전체)' && skillFilter === null) ? '•' : ''}</ActionList.TrailingVisual>
-                        {s}
-                      </ActionList.Item>
+                      <div key={s} style={{padding: 6, cursor: 'pointer'}} onClick={() => setSkillFilter(s === '(전체)' ? null : s)}>
+                        {s} {skillFilter === s || (s === '(전체)' && skillFilter === null) ? '•' : ''}
+                      </div>
                     ))}
-                  </ActionList>
-                </Box>
+                  </div>
+                </div>
 
-                <Box sx={{ mt: 3 }}>
-                  <Heading as="h3" sx={{ fontSize: 1 }}>Top 클라이언트</Heading>
-                  <AvatarStack>
-                    <Avatar alt="Client A" />
-                    <Avatar alt="Client B" />
-                    <Avatar alt="Client C" />
-                  </AvatarStack>
-                </Box>
-              </Box>
-            </Box>
+                <div style={{marginTop: 12}}>
+                  <Heading as="h3">Top 클라이언트</Heading>
+                  <div style={{display: 'flex', gap: 8, marginTop: 8}}>
+                    <Avatar src="/favicon.svg" alt="Client A" />
+                    <Avatar src="/favicon.svg" alt="Client B" />
+                    <Avatar src="/favicon.svg" alt="Client C" />
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            <Box>
-              <Box
-                borderRadius={6}
-                padding={4}
-                backgroundColor="canvas.subtle"
-                mb={4}
-              >
+            <div>
+              <div style={{borderRadius: 8, padding: 16, background: 'var(--code-bg)', marginBottom: 16}}>
                 <Heading as="h2">프로젝트 찾기</Heading>
-                <Text color="fg.muted" sx={{ mt: 2 }}>
+                <Text color="fg.muted" style={{marginTop: 8}}>
                   수많은 외주 프로젝트 중에서 원하는 기술과 예산으로 빠르게 매칭하세요.
                 </Text>
 
-                <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                <div style={{marginTop: 12, display: 'flex', gap: 8}}>
                   <Button variant="primary">프로젝트 등록</Button>
                   <Button variant="secondary">프리랜서 보기</Button>
-                </Box>
-              </Box>
+                </div>
+              </div>
 
               {filtered.length === 0 ? (
-                <Box>
+                <div>
                   <Text>검색 결과가 없습니다.</Text>
-                </Box>
+                </div>
               ) : (
                 filtered.map((p) => <ProjectCard key={p.id} p={p} />)
               )}
-            </Box>
-          </Box>
+            </div>
+          </div>
 
-          <Box as="footer" sx={{ mt: 6, borderTop: '1px solid', borderColor: 'border.muted', pt: 4 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center">
+          <footer style={{marginTop: 32, borderTop: '1px solid var(--border)', paddingTop: 16}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
               <Text color="fg.muted">© {new Date().getFullYear()} Outsourcing Hub</Text>
-              <Box>
+              <div>
                 <Button variant="invisible">회사정보</Button>
                 <Button variant="invisible">약관</Button>
-              </Box>
-            </Box>
-          </Box>
-        </Box>
+              </div>
+            </div>
+          </footer>
+        </div>
       </BaseStyles>
     </ThemeProvider>
   )

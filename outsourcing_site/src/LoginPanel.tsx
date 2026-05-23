@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Box, TextInput, Label, Button, Heading, Text } from '@primer/react'
+import { TextInput, Button, Heading, Text } from '@primer/react'
 
 export default function LoginPanel({ onLogin }: { onLogin: (token: string) => void }) {
   const [email, setEmail] = useState('')
@@ -33,22 +33,22 @@ export default function LoginPanel({ onLogin }: { onLogin: (token: string) => vo
   }
 
   return (
-    <Box sx={{ border: '1px solid', borderColor: 'border.muted', borderRadius: 6, p: 3, width: 320 }}>
+    <div style={{border: '1px solid var(--border)', borderRadius: 8, padding: 12, width: 320}}>
       <Heading as="h3">로그인</Heading>
-      <Box sx={{ mt: 2 }}>
-        <Label>이메일</Label>
+      <div style={{marginTop: 8}}>
+        <label>이메일</label>
         <TextInput value={email} onChange={(e: any) => setEmail(e.target.value)} />
-      </Box>
-      <Box sx={{ mt: 2 }}>
-        <Label>비밀번호</Label>
+      </div>
+      <div style={{marginTop: 8}}>
+        <label>비밀번호</label>
         <TextInput type="password" value={password} onChange={(e: any) => setPassword(e.target.value)} />
-      </Box>
+      </div>
       {error && (
-        <Text color="danger.fg" sx={{ mt: 2 }}>{error}</Text>
+        <Text color="danger.fg" style={{marginTop: 8}}>{error}</Text>
       )}
-      <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+      <div style={{marginTop: 12}}>
         <Button variant="primary" onClick={submitLogin} disabled={loading}>{loading ? '로그인...' : '로그인'}</Button>
-      </Box>
-    </Box>
+      </div>
+    </div>
   )
 }
