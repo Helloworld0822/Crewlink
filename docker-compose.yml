@@ -37,5 +37,23 @@ services:
     volumes:
       - ./site_backend:/app
 
+  outsourcing_site:
+    build: ./outsourcing_site
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:1.25
+    ports:
+      - "80:80"
+    depends_on:
+      - outsourcing_site
+      - backend
+    # Use the nginx config that proxies API and serves static files from the outsourced site image
+    volumes:
+      - ./outsourcing_site/default.conf:/etc/nginx/conf.d/default.conf:ro
+    # The frontend static files are baked into the outsourcing_site image at /usr/share/nginx/html
+    # No host mount for the html directory to keep container immutable
+
 volumes:
   db-data:
