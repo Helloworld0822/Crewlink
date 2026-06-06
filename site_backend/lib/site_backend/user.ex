@@ -8,6 +8,7 @@ defmodule SiteBackend.User do
     field :password, :string, virtual: true
     field :password_hash, :string
     field :name, :string
+    field :account_type, Ecto.Enum, values: [:client, :freelancer]
     has_many :logins, SiteBackend.Login
 
     timestamps()
@@ -15,8 +16,8 @@ defmodule SiteBackend.User do
 
   def registration_changeset(struct, params) do
     struct
-    |> cast(params, [:email, :password, :name])
-    |> validate_required([:email, :password])
+    |> cast(params, [:email, :password, :name, :account_type])
+    |> validate_required([:email, :password, :name, :account_type])
     |> validate_format(:email, ~r/@/)
     |> unique_constraint(:email)
     |> put_pass_hash()

@@ -1,7 +1,14 @@
 import { useState, type ChangeEvent } from 'react'
 import { TextInput, Button, Heading, Text } from '@primer/react'
 
-export default function LoginPanel({ onLogin }: { onLogin: (token: string) => void }) {
+type SessionUser = {
+  id: string
+  email: string
+  name: string
+  account_type: 'client' | 'freelancer'
+}
+
+export default function LoginPanel({ onLogin }: { onLogin: (session: { token: string; user: SessionUser }) => void }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -23,7 +30,8 @@ export default function LoginPanel({ onLogin }: { onLogin: (token: string) => vo
       } else {
         const body = await res.json()
         localStorage.setItem('token', body.token)
-        onLogin(body.token)
+        localStorage.setItem('user', JSON.stringify(body.user))
+        onLogin({ token: body.token, user: body.user })
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '로그인 중 오류가 발생했습니다.')

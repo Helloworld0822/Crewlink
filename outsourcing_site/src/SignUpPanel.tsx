@@ -1,20 +1,24 @@
 import { useState, type ChangeEvent } from 'react'
 import { TextInput, Button, Heading, Text, Select, Label } from '@primer/react'
 
-export default function SignUpPanel({ onSignUp, onClose }: { onSignUp: (token: string) => void, onClose: () => void }) {
+type SessionUser = {
+  id: string
+  email: string
+  name: string
+  account_type: 'client' | 'freelancer'
+}
+
+export default function SignUpPanel({ onSignUp, onClose }: { onSignUp: (session: { token: string; user: SessionUser }) => void, onClose: () => void }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [name, setName] = useState('')
-  const [username, setUsername] = useState('')
-  const [role, setRole] = useState<'seller' | 'buyer'>('buyer')
-  const [dob, setDob] = useState('')
+  const [accountType, setAccountType] = useState<'client' | 'freelancer'>('client')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   function validate() {
     if (!name.trim()) return '이름을 입력해주세요.'
-    if (!username.trim()) return '아이디를 입력해주세요.'
     if (!email.includes('@')) return '유효한 이메일을 입력해주세요.'
     if (password.length < 6) return '비밀번호는 최소 6자 이상이어야 합니다.'
     if (password !== confirm) return '비밀번호와 확인이 일치하지 않습니다.'
@@ -35,7 +39,7 @@ export default function SignUpPanel({ onSignUp, onClose }: { onSignUp: (token: s
       const res = await fetch(`${API_BASE}/api/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, username, role, email, password, dob }),
+        body: JSON.stringify({ name, account_type: accountType, email, password }),
       })
       if (!res.ok) {
         const body = await res.json()
@@ -43,7 +47,8 @@ export default function SignUpPanel({ onSignUp, onClose }: { onSignUp: (token: s
       } else {
         const body = await res.json()
         localStorage.setItem('token', body.token)
-        onSignUp(body.token)
+        localStorage.setItem('user', JSON.stringify(body.user))
+        onSignUp({ token: body.token, user: body.user })
         onClose()
       }
     } catch (e: unknown) {
@@ -67,19 +72,11 @@ export default function SignUpPanel({ onSignUp, onClose }: { onSignUp: (token: s
             <TextInput value={name} onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)} />
           </div>
           <div>
-            <Label>아이디</Label>
-            <TextInput value={username} onChange={(e: ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)} />
-          </div>
-          <div>
-            <Label>회원 종류</Label>
-            <Select onChange={(e: ChangeEvent<HTMLSelectElement>) => setRole(e.target.value === 'seller' ? 'seller' : 'buyer')} value={role}>
-              <option value="buyer">구매자</option>
-              <option value="seller">판매자</option>
+            <Label>회원 유형</Label>
+            <Select onChange={(e: ChangeEvent<HTMLSelectElement>) => setAccountType(e.target.value === 'freelancer' ? 'freelancer' : 'client')} value={accountType}>
+              <option value="client">클라이언트</option>
+              <option value="freelancer">프리랜서</option>
             </Select>
-          </div>
-          <div>
-            <Label>생년월일</Label>
-            <TextInput type="date" value={dob} onChange={(e: ChangeEvent<HTMLInputElement>) => setDob(e.target.value)} />
           </div>
 
           <div style={{gridColumn: '1 / -1'}}>
