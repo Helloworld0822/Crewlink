@@ -1,5 +1,7 @@
 import { useState, type ChangeEvent } from 'react'
-import { TextInput, Button, Heading, Text, Select, Label } from '@primer/react'
+import { TextInput, Button, Heading, Text, Select } from '@primer/react'
+import { API_BASE } from './apiBase'
+import { readJsonResponse, formatError } from './http'
 
 type SessionUser = {
   id: string
@@ -35,17 +37,19 @@ export default function SignUpPanel({ onSignUp, onClose }: { onSignUp: (session:
     setLoading(true)
     setError(null)
     try {
-      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
       const res = await fetch(`${API_BASE}/api/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, account_type: accountType, email, password }),
       })
+      const body = await readJsonResponse<{ error?: string; token?: string; user?: SessionUser }>(res)
       if (!res.ok) {
-        const body = await res.json()
-        setError(body.error || '가입 실패')
+        setError(formatError(body?.error, '가입 실패'))
       } else {
-        const body = await res.json()
+        if (!body?.token || !body.user) {
+          setError('가입 응답이 올바르지 않습니다.')
+          return
+        }
         localStorage.setItem('token', body.token)
         localStorage.setItem('user', JSON.stringify(body.user))
         onSignUp({ token: body.token, user: body.user })
@@ -67,30 +71,30 @@ export default function SignUpPanel({ onSignUp, onClose }: { onSignUp: (session:
         </div>
 
         <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12}}>
-          <div>
-            <Label>이름</Label>
-            <TextInput value={name} onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)} />
+          <div style={{display: 'flex', flexDirection: 'column', gap: 6}}>
+            <label style={{fontSize: 14}}>이름</label>
+            <TextInput placeholder="이름을 입력해주세요" value={name} onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)} />
           </div>
-          <div>
-            <Label>회원 유형</Label>
+          <div style={{display: 'flex', flexDirection: 'column', gap: 6}}>
+            <label style={{fontSize: 14}}>회원 유형</label>
             <Select onChange={(e: ChangeEvent<HTMLSelectElement>) => setAccountType(e.target.value === 'freelancer' ? 'freelancer' : 'client')} value={accountType}>
               <option value="client">클라이언트</option>
               <option value="freelancer">프리랜서</option>
             </Select>
           </div>
 
-          <div style={{gridColumn: '1 / -1'}}>
-            <Label>이메일</Label>
-            <TextInput value={email} onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} />
+          <div style={{gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6}}>
+            <label style={{fontSize: 14}}>이메일</label>
+            <TextInput placeholder="이메일을 입력해주세요" value={email} onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} />
           </div>
 
-          <div>
-            <Label>비밀번호</Label>
-            <TextInput type="password" value={password} onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} />
+          <div style={{display: 'flex', flexDirection: 'column', gap: 6}}>
+            <label style={{fontSize: 14}}>비밀번호</label>
+            <TextInput type="password" placeholder="비밀번호를 입력해주세요" value={password} onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} />
           </div>
-          <div>
-            <Label>비밀번호 확인</Label>
-            <TextInput type="password" value={confirm} onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirm(e.target.value)} />
+          <div style={{display: 'flex', flexDirection: 'column', gap: 6}}>
+            <label style={{fontSize: 14}}>비밀번호 확인</label>
+            <TextInput type="password" placeholder="비밀번호를 다시 입력해주세요" value={confirm} onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirm(e.target.value)} />
           </div>
         </div>
 

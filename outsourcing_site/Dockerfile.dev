@@ -1,0 +1,22 @@
+# Dev container: runs the Vite dev server with HMR.
+# Source is bind-mounted from the host so edits on the host are picked
+# up live. node_modules is kept inside the container via an anonymous
+# volume so the host's node_modules (different platform binaries) isn't
+# used.
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install deps in their own layer so the bind-mounted source doesn't
+# blow them away on every change.
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Source is mounted at runtime via docker-compose volumes.
+EXPOSE 5173
+
+# --host 0.0.0.0 is set in vite.config.ts (host: true) but we pass it
+# again here for clarity. The trailing "0.0.0.0" tells Vite to listen on
+# all interfaces, which is required to be reachable from the docker
+# network (and from the host when 5173 is published).
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

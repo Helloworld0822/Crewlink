@@ -1,5 +1,7 @@
 import { useState, type ChangeEvent } from 'react'
 import { TextInput, Button, Heading, Text } from '@primer/react'
+import { API_BASE } from './apiBase'
+import { readJsonResponse, formatError } from './http'
 
 type SessionUser = {
   id: string
@@ -18,17 +20,19 @@ export default function LoginPanel({ onLogin }: { onLogin: (session: { token: st
     setLoading(true)
     setError(null)
     try {
-      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
       const res = await fetch(`${API_BASE}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
+      const body = await readJsonResponse<{ error?: string; token?: string; user?: SessionUser }>(res)
       if (!res.ok) {
-        const body = await res.json()
-        setError(body.error || '로그인 실패')
+        setError(formatError(body?.error, '로그인 실패'))
       } else {
-        const body = await res.json()
+        if (!body?.token || !body.user) {
+          setError('로그인 응답이 올바르지 않습니다.')
+          return
+        }
         localStorage.setItem('token', body.token)
         localStorage.setItem('user', JSON.stringify(body.user))
         onLogin({ token: body.token, user: body.user })
@@ -43,13 +47,13 @@ export default function LoginPanel({ onLogin }: { onLogin: (session: { token: st
   return (
     <div style={{border: '1px solid var(--border)', borderRadius: 12, padding: 16, width: 320, background: 'var(--surface)', boxShadow: 'var(--shadow)'}}>
       <Heading as="h3">로그인</Heading>
-      <div style={{marginTop: 8}}>
+      <div style={{marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6}}>
         <label>이메일</label>
-        <TextInput value={email} onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} />
+        <TextInput placeholder="이메일을 입력해주세요" value={email} onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} />
       </div>
-      <div style={{marginTop: 8}}>
+      <div style={{marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6}}>
         <label>비밀번호</label>
-        <TextInput type="password" value={password} onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} />
+        <TextInput type="password" placeholder="비밀번호를 입력해주세요" value={password} onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} />
       </div>
       {error && (
         <Text color="danger.fg" style={{marginTop: 8}}>{error}</Text>

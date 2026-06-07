@@ -1,0 +1,30 @@
+# Dev container: runs the Elixir backend in dev mode.
+# Source is bind-mounted from the host; the bind mount hides the COPYed
+# deps in this image, so we install them into a named volume on first
+# boot. The compose file handles the volume wiring.
+FROM elixir:latest
+
+ENV MIX_ENV=dev
+
+# Build deps: postgres client + libpq for the elixir driver.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl gnupg build-essential git libpq-dev postgresql-client inotify-tools erlang-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Hex/Rebar get installed into /root/.mix; re-run on entry to ensure
+# the user matches the host-mounted UID.
+RUN mix local.hex --force && mix local.rebar --force
+
+# Mix needs the project manifest present before it can resolve deps.
+COPY mix.exs mix.lock ./
+COPY config ./config
+RUN mix deps.get
+
+EXPOSE 4000
+
+# Code is bind-mounted from the host. Entry script waits for the DB,
+# creates+migrates the dev DB if needed, then starts the OTP app.
+# The app is a Plug/Cowboy server, so `mix run --no-halt` keeps it alive.
+CMD ["sh", "-c", "until pg_isready -h \"$DB_HOST\" -p \"$DB_PORT\" -U \"$DB_USER\"; do echo 'waiting for postgres'; sleep 2; done; mix compile --force && mix ecto.create 2>/dev/null || true; mix ecto.migrate && mix run --no-halt"]

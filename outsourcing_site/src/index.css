@@ -45,6 +45,24 @@ html[data-theme='night'] {
   color-scheme: dark;
 }
 
+html[data-theme='night'] #root,
+html[data-theme='night'] #root * {
+  color: var(--text-strong) !important;
+}
+
+html[data-theme='night'] input,
+html[data-theme='night'] textarea,
+html[data-theme='night'] select {
+  background: var(--surface-strong) !important;
+  color: var(--text-strong) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme='night'] input::placeholder,
+html[data-theme='night'] textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
 body {
   margin: 0;
   background: var(--bg);

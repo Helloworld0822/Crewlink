@@ -12,6 +12,8 @@ import './App.css'
 import LoginPanel from './LoginPanel'
 import SignUpPanel from './SignUpPanel'
 import heroImage from './assets/hero.png'
+import { API_BASE } from './apiBase'
+import { readJsonResponse, formatError } from './http'
 
 type AccountType = 'client' | 'freelancer'
 
@@ -298,17 +300,17 @@ export default function App() {
       headers.set('Authorization', `Bearer ${session.token}`)
     }
 
-    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}${path}`, {
+    const res = await fetch(`${API_BASE}${path}`, {
       ...init,
       headers,
     })
 
-    const body = await res.json().catch(() => null)
+    const body = await readJsonResponse<T>(res)
     if (!res.ok) {
-      throw new Error(body?.error || '요청 실패')
+      throw new Error(formatError((body as { error?: unknown } | null)?.error, '요청 실패'))
     }
 
-    return body as T
+    return (body ?? ({} as T)) as T
   }
 
   async function loadPublicProjects() {

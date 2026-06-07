@@ -10,15 +10,15 @@ defmodule SiteBackend.Router do
   plug Plug.Parsers, parsers: [:json], json_decoder: Jason
   plug :dispatch
 
-  post "/api/signup" do
+  post "/signup" do
     handle_signup(conn)
   end
 
-  post "/api/register" do
+  post "/register" do
     handle_signup(conn)
   end
 
-  post "/api/login" do
+  post "/login" do
     %{"email" => email, "password" => password} = conn.body_params
 
     case Repo.get_by(User, email: email) do
@@ -54,7 +54,7 @@ defmodule SiteBackend.Router do
     end
   end
 
-  get "/api/projects" do
+  get "/projects" do
     projects =
       from(p in Project, order_by: [desc: p.inserted_at])
       |> Repo.all()
@@ -63,7 +63,7 @@ defmodule SiteBackend.Router do
     send_json(conn, %{data: projects})
   end
 
-  post "/api/projects" do
+  post "/projects" do
     case authorize_roles(conn, [:client]) do
       {:ok, user} ->
         params =
@@ -86,7 +86,7 @@ defmodule SiteBackend.Router do
     end
   end
 
-  get "/api/client/projects" do
+  get "/client/projects" do
     case authorize_roles(conn, [:client]) do
       {:ok, user} ->
         projects =
@@ -101,7 +101,7 @@ defmodule SiteBackend.Router do
     end
   end
 
-  post "/api/projects/:id/applications" do
+  post "/projects/:id/applications" do
     case authorize_roles(conn, [:freelancer]) do
       {:ok, user} ->
         case Repo.get(Project, conn.path_params["id"]) do
@@ -131,7 +131,7 @@ defmodule SiteBackend.Router do
     end
   end
 
-  get "/api/freelancer/applications" do
+  get "/freelancer/applications" do
     case authorize_roles(conn, [:freelancer]) do
       {:ok, user} ->
         applications =
@@ -146,7 +146,7 @@ defmodule SiteBackend.Router do
     end
   end
 
-  get "/api/logins" do
+  get "/logins" do
     logins =
       Repo.all(Login)
       |> Repo.preload(:user)
@@ -202,7 +202,10 @@ defmodule SiteBackend.Router do
          user when not is_nil(user) <- Repo.get(User, user_id) do
       {:ok, user}
     else
-      _ -> {:error, 401, "unauthorized"}
+      reason ->
+        require Logger
+        Logger.warning("current_user failed: #{inspect(reason)}")
+        {:error, 401, "unauthorized"}
     end
   end
 

@@ -1,17 +1,37 @@
 defmodule SiteBackend.Auth do
   @moduledoc false
-  alias Joken.Signer
 
-  @secret System.get_env("JWT_SECRET") || "dev_jwt_secret"
+  alias SiteBackend.Token
 
   def generate_jwt(claims) when is_map(claims) do
-    signer = Signer.create("HS256", @secret)
-    token = Joken.generate_and_sign!(claims, signer)
-    {:ok, token, claims}
+    full_claims = Map.merge(default_claims(), claims)
+    Joken.encode_and_sign(full_claims, Token.signer(), [])
   end
 
-  def verify_jwt(token) do
-    signer = Signer.create("HS256", @secret)
-    Joken.verify_and_validate(token, signer)
+  def verify_jwt(token) when is_binary(token) do
+    with {:ok, claims} <- Joken.verify(token, Token.signer(), []),
+         :ok <- check_exp(claims) do
+      {:ok, claims}
+    end
+  end
+
+  def verify_jwt(_), do: {:error, :invalid_token}
+
+  defp check_exp(claims) do
+    case Map.get(claims, "exp") do
+      exp when is_integer(exp) ->
+        if exp > Joken.current_time(), do: :ok, else: {:error, :expired}
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp default_claims do
+    %{
+      "iss" => "outsourcing_site",
+      "aud" => "outsourcing_site",
+      "exp" => Joken.current_time() + 3600
+    }
   end
 end

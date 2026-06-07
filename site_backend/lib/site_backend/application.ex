@@ -8,16 +8,16 @@ defmodule SiteBackend.Application do
   def start(_type, _args) do
     port = String.to_integer(System.get_env("PORT") || "4000")
 
-    children = [
-      SiteBackend.Repo,
-      {Plug.Cowboy,
-       scheme: :http,
-       plug: SiteBackend.Router,
-       options: [port: port],
-       shutdown: 10_000}
-    ]
+    for app <- [:telemetry, :jason, :plug, :plug_cowboy, :cowboy, :ranch, :ecto_sql, :postgrex, :bcrypt_elixir] do
+      {:ok, _} = Application.ensure_all_started(app)
+    end
+
+    children = [SiteBackend.Repo]
 
     opts = [strategy: :one_for_one, name: SiteBackend.Supervisor]
-    Supervisor.start_link(children, opts)
+    with {:ok, sup} <- Supervisor.start_link(children, opts),
+         {:ok, _pid} <- Plug.Cowboy.http(SiteBackend.Router, [], ip: {0, 0, 0, 0}, port: port) do
+      {:ok, sup}
+    end
   end
 end
