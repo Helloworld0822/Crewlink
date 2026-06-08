@@ -1,8 +1,8 @@
 import { useState, type ChangeEvent } from 'react'
-import { TextInput, Button, Heading, Text, Select } from '@primer/react'
+import { TextInput, Button, Heading, Select } from '@primer/react'
 import { EyeIcon, EyeClosedIcon } from '@primer/octicons-react'
 import { API_BASE } from './apiBase'
-import { readJsonResponse, formatError } from './http'
+import { readJsonResponse, formatHttpError } from './http'
 
 type SessionUser = {
   id: string
@@ -47,7 +47,8 @@ export default function SignUpPanel({ onSignUp, onClose }: { onSignUp: (session:
       })
       const body = await readJsonResponse<{ error?: string; token?: string; user?: SessionUser }>(res)
       if (!res.ok) {
-        setError(formatError(body?.error, '가입 실패'))
+        const retryAfter = res.headers.get('retry-after')
+        setError(formatHttpError(res.status, retryAfter, body?.error))
       } else {
         if (!body?.token || !body.user) {
           setError('가입 응답이 올바르지 않습니다.')
@@ -125,7 +126,21 @@ export default function SignUpPanel({ onSignUp, onClose }: { onSignUp: (session:
           </div>
         </div>
 
-        {error && <Text color="danger.fg" style={{marginTop: 12}}>{error}</Text>}
+        {error && (
+          <div style={{
+            marginTop: 12,
+            padding: '10px 14px',
+            borderRadius: 8,
+            background: 'rgba(248, 81, 73, 0.1)',
+            border: '1px solid rgba(248, 81, 73, 0.3)',
+            color: '#cf222e',
+            fontSize: 14,
+            lineHeight: 1.5,
+            whiteSpace: 'pre-line',
+          }}>
+            {error}
+          </div>
+        )}
 
         <div style={{display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16}}>
           <Button variant="default" onClick={onClose}>취소</Button>

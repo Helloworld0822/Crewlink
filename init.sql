@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash text NOT NULL,
   name text,
   account_type text NOT NULL DEFAULT 'client',
+  failed_login_count integer NOT NULL DEFAULT 0,
+  locked_until timestamp,
   inserted_at timestamp NOT NULL DEFAULT now(),
   updated_at timestamp NOT NULL DEFAULT now()
 );
@@ -96,3 +98,27 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 CREATE INDEX IF NOT EXISTS notifications_user_id_index ON notifications (user_id);
 CREATE INDEX IF NOT EXISTS notifications_is_read_index ON notifications (is_read);
+
+CREATE TABLE IF NOT EXISTS chat_rooms (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  freelancer_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  service_order_id uuid REFERENCES service_orders(id) ON DELETE SET NULL,
+  inserted_at timestamp NOT NULL DEFAULT now(),
+  updated_at timestamp NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS chat_rooms_client_id_index ON chat_rooms (client_id);
+CREATE INDEX IF NOT EXISTS chat_rooms_freelancer_id_index ON chat_rooms (freelancer_id);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  chat_room_id uuid NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+  sender_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  content text NOT NULL,
+  inserted_at timestamp NOT NULL DEFAULT now(),
+  updated_at timestamp NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS chat_messages_chat_room_id_index ON chat_messages (chat_room_id);
+CREATE INDEX IF NOT EXISTS chat_messages_sender_id_index ON chat_messages (sender_id);

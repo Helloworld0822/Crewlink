@@ -130,3 +130,222 @@ html[data-theme='night'] .notification-dropdown {
   background: var(--surface) !important;
   border-color: var(--border) !important;
 }
+
+/* Chat FAB */
+.chat-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4);
+  z-index: 999;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.chat-fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 24px rgba(124, 58, 237, 0.5);
+}
+
+/* Chat Panel */
+.chat-panel {
+  position: fixed;
+  bottom: 92px;
+  right: 24px;
+  width: 380px;
+  height: 520px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  z-index: 998;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.chat-header-title {
+  flex: 1;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.chat-back,
+.chat-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.chat-back:hover,
+.chat-close:hover {
+  background: var(--surface-strong);
+}
+
+/* Chat Rooms List */
+.chat-rooms {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.chat-room-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.chat-room-item:hover {
+  background: var(--surface);
+}
+
+.chat-room-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.chat-room-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-room-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.chat-room-preview {
+  color: var(--text-muted);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Chat Messages */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-message {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+}
+
+.chat-message.mine {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.chat-message.theirs {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.chat-sender {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+  padding-left: 4px;
+}
+
+.chat-bubble {
+  padding: 8px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.chat-message.mine .chat-bubble {
+  background: var(--accent);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-message.theirs .chat-bubble {
+  background: var(--surface-strong);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+
+.chat-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  padding: 0 4px;
+}
+
+/* Chat Input */
+.chat-input-area {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  align-items: center;
+}
+
+.chat-input-area input {
+  flex: 1;
+}
+
+/* Dark mode chat overrides */
+html[data-theme='night'] .chat-panel {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme='night'] .chat-header {
+  background: var(--surface-strong) !important;
+}
+
+html[data-theme='night'] .chat-input-area {
+  background: var(--surface-strong) !important;
+}
+
+html[data-theme='night'] .chat-message.theirs .chat-bubble {
+  background: var(--surface-strong) !important;
+  color: var(--text-strong) !important;
+}

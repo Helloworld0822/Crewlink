@@ -44,6 +44,7 @@ services:
       # Exposed for direct dev access (curl, debugger, etc). Most
       # traffic should go through nginx on :80.
       - "4000:4000"
+      - "4001:4001"
     depends_on:
       - db
     volumes:

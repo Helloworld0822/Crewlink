@@ -1,8 +1,8 @@
 import { useState, type ChangeEvent } from 'react'
-import { TextInput, Button, Heading, Text } from '@primer/react'
+import { TextInput, Button, Heading } from '@primer/react'
 import { EyeIcon, EyeClosedIcon } from '@primer/octicons-react'
 import { API_BASE } from './apiBase'
-import { readJsonResponse, formatError } from './http'
+import { readJsonResponse, formatHttpError } from './http'
 
 type SessionUser = {
   id: string
@@ -29,7 +29,8 @@ export default function LoginPanel({ onLogin }: { onLogin: (session: { token: st
       })
       const body = await readJsonResponse<{ error?: string; token?: string; user?: SessionUser }>(res)
       if (!res.ok) {
-        setError(formatError(body?.error, '로그인 실패'))
+        const retryAfter = res.headers.get('retry-after')
+        setError(formatHttpError(res.status, retryAfter, body?.error))
       } else {
         if (!body?.token || !body.user) {
           setError('로그인 응답이 올바르지 않습니다.')
@@ -70,7 +71,18 @@ export default function LoginPanel({ onLogin }: { onLogin: (session: { token: st
         />
       </div>
       {error && (
-        <Text color="danger.fg" style={{marginTop: 8}}>{error}</Text>
+        <div style={{
+          marginTop: 8,
+          padding: '10px 14px',
+          borderRadius: 8,
+          background: 'rgba(248, 81, 73, 0.1)',
+          border: '1px solid rgba(248, 81, 73, 0.3)',
+          color: '#cf222e',
+          fontSize: 14,
+          lineHeight: 1.5,
+        }}>
+          {error}
+        </div>
       )}
       <div style={{marginTop: 12}}>
         <Button variant="primary" onClick={submitLogin} disabled={loading}>{loading ? '로그인...' : '로그인'}</Button>

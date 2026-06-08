@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { API_BASE } from './apiBase'
 import { readJsonResponse } from './http'
 
@@ -28,8 +28,8 @@ type Props = {
 export default function NotificationBell({ token }: Props) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const wsRef = useRef<WebSocket | null>(null)
   const tokenRef = useRef(token)
 
   useEffect(() => {
@@ -38,40 +38,55 @@ export default function NotificationBell({ token }: Props) {
 
   const unreadCount = notifications.filter((n) => !n.is_read).length
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/notifications`, {
-        headers: { Authorization: `Bearer ${tokenRef.current}` },
-      })
-      const body = await readJsonResponse<{ data: Notification[] }>(res)
-      if (res.ok && body?.data) {
-        setNotifications(body.data)
-      }
-    } catch {
-      // silent
-    }
-  }, [])
-
   useEffect(() => {
-    let active = true
+    const ctrl = new AbortController()
 
-    async function initial() {
-      setLoading(true)
-      await fetchNotifications()
-      if (active) setLoading(false)
+    async function load() {
+      try {
+        const res = await fetch(`${API_BASE}/api/notifications`, {
+          headers: { Authorization: `Bearer ${tokenRef.current}` },
+          signal: ctrl.signal,
+        })
+        const body = await readJsonResponse<{ data: Notification[] }>(res)
+        if (res.ok && body?.data) {
+          setNotifications(body.data)
+        }
+      } catch {
+        // silent
+      }
     }
 
-    initial()
+    load()
 
-    const interval = setInterval(() => {
-      fetchNotifications()
-    }, 30_000)
+    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws?token=${tokenRef.current}`
+    const ws = new WebSocket(wsUrl)
+    wsRef.current = ws
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data)
+        if (msg.type === 'notification') {
+          setNotifications((prev) => [msg.data, ...prev])
+        }
+      } catch {
+        // silent
+      }
+    }
+
+    ws.onclose = () => {
+      setTimeout(() => {
+        if (wsRef.current === ws) {
+          wsRef.current = null
+        }
+      }, 1000)
+    }
 
     return () => {
-      active = false
-      clearInterval(interval)
+      ctrl.abort()
+      ws.close()
+      wsRef.current = null
     }
-  }, [fetchNotifications])
+  }, [])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -204,11 +219,7 @@ export default function NotificationBell({ token }: Props) {
             )}
           </div>
 
-          {loading && notifications.length === 0 && (
-            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>불러오는 중...</div>
-          )}
-
-          {!loading && notifications.length === 0 && (
+          {notifications.length === 0 && (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>알림이 없습니다.</div>
           )}
 

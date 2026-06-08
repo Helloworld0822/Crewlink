@@ -16,6 +16,7 @@ import FreelancerServiceForm, { type FreelancerService } from './FreelancerServi
 import FreelancerServiceList from './FreelancerServiceList'
 import ServiceOrderDialog from './ServiceOrderDialog'
 import NotificationBell from './NotificationBell'
+import ChatWidget from './ChatWidget'
 import heroImage from './assets/hero.png'
 import { API_BASE } from './apiBase'
 import { readJsonResponse, formatError } from './http'
@@ -763,6 +764,14 @@ export default function App() {
               </div>
             </div>
           </footer>
+
+          {session && (
+            <ChatWidget
+              token={session.token}
+              userId={session.user.id}
+              userRole={session.user.account_type}
+            />
+          )}
         </div>
       </BaseStyles>
     </ThemeProvider>

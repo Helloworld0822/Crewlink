@@ -6,10 +6,10 @@ defmodule SiteBackend.Router do
     body =
       cond do
         Kernel.is_exception(reason) ->
-          Jason.encode!(%{error: "unhandled exception", type: reason.__struct__ |> Module.split() |> Enum.join(".")})
+          Jason.encode!(%{error: translate_exception(reason)})
 
         true ->
-          Jason.encode!(%{error: "internal server error", reason: inspect(reason)})
+          Jason.encode!(%{error: "서버 내부 오류가 발생했습니다."})
       end
 
     require Logger
@@ -20,54 +20,152 @@ defmodule SiteBackend.Router do
     |> send_resp(500, body)
   end
 
+  defp translate_exception(%Postgrex.Error{} = e) do
+    case e.postgres do
+      %{code: :unique_violation, constraint: constraint} ->
+        cond do
+          String.contains?(constraint, "users_email") -> "이미 가입된 이메일 주소입니다."
+          String.contains?(constraint, "project_applications") -> "이미 이 프로젝트에 지원하셨습니다."
+          String.contains?(constraint, "_id_index") -> "이미 처리된 요청입니다."
+          true -> "이미 존재하는 데이터입니다."
+        end
+
+      %{code: :foreign_key_violation} ->
+        "존재하지 않는 데이터를 참조하고 있습니다."
+
+      %{code: :not_null_violation, column: column} ->
+        field_kr = SiteBackend.ErrorMessages.translate_field(column)
+        "#{field_kr}은(는) 반드시 입력해야 합니다."
+
+      _ ->
+        "데이터베이스 오류가 발생했습니다."
+    end
+  end
+
+  defp translate_exception(_), do: "서버 내부 오류가 발생했습니다."
+
   import Ecto.Query
 
-  alias SiteBackend.{FreelancerService, Login, Notification, Project, ProjectApplication, Repo, ServiceOrder, User}
+  alias SiteBackend.{ChatMessage, ChatRoom, ErrorMessages, FreelancerService, Login, Notification, Project, ProjectApplication, Repo, SecurityAudit, ServiceOrder, User}
 
   plug :match
-  plug Plug.Parsers, parsers: [:json], json_decoder: Jason
+  plug Plug.Parsers, parsers: [:json], json_decoder: Jason, pass: ["*/*"]
+  plug SiteBackend.CORSMiddleware
   plug :dispatch
 
+  # Rate limit thresholds (in-memory token bucket)
+  @login_rate_limit 5
+  @login_rate_window 60
+  @signup_rate_limit 3
+  @signup_rate_window 3600
+  @api_rate_limit 100
+  @api_rate_window 60
+
   post "/signup" do
-    handle_signup(conn)
+    key = "signup:#{request_ip(conn)}"
+
+    case SiteBackend.RateLimiter.hit(key, @signup_rate_limit, @signup_rate_window) do
+      {:ok, _} -> handle_signup(conn)
+      {:error, :rate_limited, retry_after} ->
+        SecurityAudit.log_rate_limit(key, conn.request_path)
+        conn
+        |> put_resp_header("retry-after", to_string(retry_after))
+        |> json_error(429, "가입 시도가 너무 많습니다. #{retry_after}초 후에 다시 시도해주세요.")
+    end
   end
 
   post "/register" do
-    handle_signup(conn)
+    key = "signup:#{request_ip(conn)}"
+
+    case SiteBackend.RateLimiter.hit(key, @signup_rate_limit, @signup_rate_window) do
+      {:ok, _} -> handle_signup(conn)
+      {:error, :rate_limited, retry_after} ->
+        SecurityAudit.log_rate_limit(key, conn.request_path)
+        conn
+        |> put_resp_header("retry-after", to_string(retry_after))
+        |> json_error(429, "가입 시도가 너무 많습니다. #{retry_after}초 후에 다시 시도해주세요.")
+    end
   end
 
   post "/login" do
-    %{"email" => email, "password" => password} = conn.body_params
+    ip = request_ip(conn)
+    key = "login:#{ip}"
 
-    case Repo.get_by(User, email: email) do
-      nil ->
-        json_error(conn, 401, "invalid credentials")
+    case SiteBackend.RateLimiter.hit(key, @login_rate_limit, @login_rate_window) do
+      {:error, :rate_limited, retry_after} ->
+        SecurityAudit.log_rate_limit(key, conn.request_path)
+        conn
+        |> put_resp_header("retry-after", to_string(retry_after))
+        |> json_error(429, "로그인 시도가 너무 많습니다. #{retry_after}초 후에 다시 시도해주세요.")
 
-      user ->
-        if Bcrypt.verify_pass(password, user.password_hash) do
-          {:ok, token, _claims} = SiteBackend.Auth.generate_jwt(%{user_id: user.id})
+      {:ok, _} ->
+        %{"email" => email, "password" => password} = conn.body_params
 
-          login_changeset =
-            Login.changeset(%Login{}, %{
-              user_id: user.id,
-              ip_address: request_ip(conn)
-            })
+        case Repo.get_by(User, email: email) do
+          nil ->
+            SecurityAudit.log_failed_login(email, ip)
+            SiteBackend.RateLimiter.hit(key, @login_rate_limit, @login_rate_window)
+            json_error(conn, 401, "이메일 또는 비밀번호가 올바르지 않습니다.")
 
-          case Repo.insert(login_changeset) do
-            {:ok, _login} ->
-              conn
-              |> put_resp_content_type("application/json")
-              |> send_resp(200, Jason.encode!(%{token: token, user: user_to_map(user)}))
-
-            {:error, changeset} ->
+          user ->
+            if User.locked?(user) do
+              SecurityAudit.log_account_lockout(user.id, email, ip)
+              remaining_minutes = NaiveDateTime.diff(user.locked_until, NaiveDateTime.utc_now(), :minute) + 1
               json_error(
                 conn,
-                500,
-                Ecto.Changeset.traverse_errors(changeset, fn {msg, _opts} -> msg end)
+                423,
+                "계정이 잠겼습니다. #{remaining_minutes}분 후에 다시 시도해주세요."
               )
+            else
+              if Bcrypt.verify_pass(password, user.password_hash) do
+                user
+                |> User.reset_failed_logins()
+                |> Repo.update()
+
+                SiteBackend.RateLimiter.reset(key)
+
+                {:ok, token, _claims} = SiteBackend.Auth.generate_jwt(%{user_id: user.id})
+
+                login_changeset =
+                  Login.changeset(%Login{}, %{
+                    user_id: user.id,
+                    ip_address: ip
+                  })
+
+                case Repo.insert(login_changeset) do
+                  {:ok, _login} ->
+                    SecurityAudit.log_successful_login(user.id, email, ip)
+
+                    conn
+                    |> put_resp_content_type("application/json")
+                    |> send_resp(200, Jason.encode!(%{token: token, user: user_to_map(user)}))
+
+                  {:error, changeset} ->
+                    json_error(conn, 500, ErrorMessages.translate_changeset_errors(changeset))
+                end
+              else
+                SecurityAudit.log_failed_login(email, ip)
+
+                case user
+                     |> User.increment_failed_login()
+                     |> Repo.update() do
+                  {:ok, updated_user} ->
+                    if User.locked?(updated_user) do
+                      SecurityAudit.log_account_lockout(user.id, email, ip)
+                      json_error(
+                        conn,
+                        423,
+                        "로그인 시도가 너무 많아 계정이 15분간 잠겼습니다."
+                      )
+                    else
+                      json_error(conn, 401, "이메일 또는 비밀번호가 올바르지 않습니다.")
+                    end
+
+                  {:error, _} ->
+                    json_error(conn, 401, "이메일 또는 비밀번호가 올바르지 않습니다.")
+                end
+              end
             end
-        else
-          json_error(conn, 401, "invalid credentials")
         end
     end
   end
@@ -146,7 +244,7 @@ defmodule SiteBackend.Router do
                 send_json(conn, %{data: application_to_map(application)}, 201)
 
               {:error, changeset} ->
-                json_error(conn, 400, Ecto.Changeset.traverse_errors(changeset, fn {msg, _opts} -> msg end))
+                json_error(conn, 400, ErrorMessages.translate_changeset_errors(changeset))
             end
         end
 
@@ -256,7 +354,7 @@ defmodule SiteBackend.Router do
               {:ok, updated} -> updated = Repo.preload(updated, :freelancer)
                 send_json(conn, %{data: service_to_map(updated)})
               {:error, changeset} ->
-                json_error(conn, 400, Ecto.Changeset.traverse_errors(changeset, fn {msg, _opts} -> msg end))
+                json_error(conn, 400, ErrorMessages.translate_changeset_errors(changeset))
             end
 
           _ ->
@@ -279,7 +377,7 @@ defmodule SiteBackend.Router do
             case Repo.delete(service) do
               {:ok, _} -> send_json(conn, %{ok: true})
               {:error, changeset} ->
-                json_error(conn, 400, Ecto.Changeset.traverse_errors(changeset, fn {msg, _opts} -> msg end))
+                json_error(conn, 400, ErrorMessages.translate_changeset_errors(changeset))
             end
 
           _ ->
@@ -317,7 +415,7 @@ defmodule SiteBackend.Router do
                 send_json(conn, %{data: order_to_map(order)}, 201)
 
               {:error, changeset} ->
-                json_error(conn, 400, Ecto.Changeset.traverse_errors(changeset, fn {msg, _opts} -> msg end))
+                json_error(conn, 400, ErrorMessages.translate_changeset_errors(changeset))
             end
         end
 
@@ -539,6 +637,121 @@ defmodule SiteBackend.Router do
     end
   end
 
+  post "/chat/rooms" do
+    case current_user(conn) do
+      {:ok, user} ->
+        %{"freelancer_id" => freelancer_id} = conn.body_params
+        client_id = if user.account_type == :client, do: user.id, else: freelancer_id
+        freelancer_id = if user.account_type == :freelancer, do: user.id, else: freelancer_id
+
+        existing =
+          from(r in ChatRoom,
+            where: r.client_id == ^client_id and r.freelancer_id == ^freelancer_id
+          )
+          |> Repo.one()
+          |> Repo.preload([:client, :freelancer])
+
+        if existing do
+          send_json(conn, %{data: chat_room_to_map(existing)})
+        else
+          params = %{client_id: client_id, freelancer_id: freelancer_id}
+          params = if conn.body_params["service_order_id"], do: Map.put(params, :service_order_id, conn.body_params["service_order_id"]), else: params
+
+          case ChatRoom.changeset(%ChatRoom{}, params) |> Repo.insert() do
+            {:ok, room} ->
+              room = Repo.preload(room, [:client, :freelancer])
+              send_json(conn, %{data: chat_room_to_map(room)}, 201)
+            {:error, changeset} ->
+              json_error(conn, 400, ErrorMessages.translate_changeset_errors(changeset))
+          end
+        end
+
+      {:error, status, message} ->
+        json_error(conn, status, message)
+    end
+  end
+
+  get "/chat/rooms" do
+    case current_user(conn) do
+      {:ok, user} ->
+        field = if user.account_type == :client, do: :client_id, else: :freelancer_id
+        rooms =
+          from(r in ChatRoom, where: field(r, ^field) == ^user.id, order_by: [desc: r.updated_at])
+          |> Repo.all()
+          |> Repo.preload([:client, :freelancer, :service_order])
+
+        send_json(conn, %{data: Enum.map(rooms, &chat_room_to_map/1)})
+
+      {:error, status, message} ->
+        json_error(conn, status, message)
+    end
+  end
+
+  get "/chat/rooms/:id/messages" do
+    case current_user(conn) do
+      {:ok, user} ->
+        case Repo.get(ChatRoom, conn.path_params["id"]) do
+          nil ->
+            json_error(conn, 404, "chat room not found")
+
+          room when room.client_id == user.id or room.freelancer_id == user.id ->
+            messages =
+              from(m in ChatMessage,
+                where: m.chat_room_id == ^room.id,
+                order_by: [asc: m.inserted_at],
+                limit: 100
+              )
+              |> Repo.all()
+              |> Repo.preload(:sender)
+
+            send_json(conn, %{data: Enum.map(messages, &chat_message_to_map/1)})
+
+          _ ->
+            json_error(conn, 403, "forbidden")
+        end
+
+      {:error, status, message} ->
+        json_error(conn, status, message)
+    end
+  end
+
+  post "/chat/rooms/:id/messages" do
+    case current_user(conn) do
+      {:ok, user} ->
+        case Repo.get(ChatRoom, conn.path_params["id"]) do
+          nil ->
+            json_error(conn, 404, "chat room not found")
+
+          room when room.client_id == user.id or room.freelancer_id == user.id ->
+            params = %{
+              content: conn.body_params["content"],
+              chat_room_id: room.id,
+              sender_id: user.id
+            }
+
+            case ChatMessage.changeset(%ChatMessage{}, params) |> Repo.insert() do
+              {:ok, message} ->
+                message = Repo.preload(message, :sender)
+                msg_map = chat_message_to_map(message)
+
+                SiteBackend.PubSub.broadcast(room.client_id, %{type: "chat", data: msg_map})
+                SiteBackend.PubSub.broadcast(room.freelancer_id, %{type: "chat", data: msg_map})
+
+                send_json(conn, %{data: msg_map}, 201)
+
+              {:error, changeset} ->
+                json_error(conn, 400, ErrorMessages.translate_changeset_errors(changeset))
+            end
+
+          _ ->
+            json_error(conn, 403, "forbidden")
+        end
+
+      {:error, status, message} ->
+        json_error(conn, status, message)
+    end
+  end
+
   match _ do
     send_resp(conn, 404, "not found")
   end
@@ -554,6 +767,7 @@ defmodule SiteBackend.Router do
     case Repo.insert(changeset) do
       {:ok, user} ->
         {:ok, token, _claims} = SiteBackend.Auth.generate_jwt(%{user_id: user.id})
+        SecurityAudit.log_signup(user.id, user.email, request_ip(conn))
 
         send_json(
           conn,
@@ -565,7 +779,7 @@ defmodule SiteBackend.Router do
         )
 
       {:error, changeset} ->
-        json_error(conn, 400, Ecto.Changeset.traverse_errors(changeset, fn {msg, _opts} -> msg end))
+        json_error(conn, 400, ErrorMessages.translate_changeset_errors(changeset))
     end
   end
 
@@ -722,7 +936,13 @@ defmodule SiteBackend.Router do
     |> Notification.changeset(Map.put(attrs, :user_id, user_id))
     |> Repo.insert()
     |> case do
-      {:ok, _} -> :ok
+      {:ok, notification} ->
+        SiteBackend.PubSub.broadcast(user_id, %{
+          type: "notification",
+          data: notification_to_map(notification)
+        })
+        :ok
+
       {:error, _} -> :ok
     end
   end
@@ -738,6 +958,31 @@ defmodule SiteBackend.Router do
       is_read: notification.is_read,
       inserted_at: format_datetime(notification.inserted_at),
       updated_at: format_datetime(notification.updated_at)
+    }
+  end
+
+  defp chat_room_to_map(room) do
+    %{
+      id: room.id,
+      client_id: room.client_id,
+      freelancer_id: room.freelancer_id,
+      service_order_id: room.service_order_id,
+      client: if(room.client, do: user_to_map(room.client), else: nil),
+      freelancer: if(room.freelancer, do: user_to_map(room.freelancer), else: nil),
+      inserted_at: format_datetime(room.inserted_at),
+      updated_at: format_datetime(room.updated_at)
+    }
+  end
+
+  defp chat_message_to_map(message) do
+    %{
+      id: message.id,
+      chat_room_id: message.chat_room_id,
+      sender_id: message.sender_id,
+      content: message.content,
+      sender: if(message.sender, do: user_to_map(message.sender), else: nil),
+      inserted_at: format_datetime(message.inserted_at),
+      updated_at: format_datetime(message.updated_at)
     }
   end
 end
