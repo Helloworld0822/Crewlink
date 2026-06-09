@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, TextInput } from '@primer/react'
-import { API_BASE } from './apiBase'
-import { readJsonResponse } from './http'
+import { API_BASE } from '../api/apiBase'
+import { readJsonResponse } from '../api/http'
 
 type ChatRoom = {
   id: string
