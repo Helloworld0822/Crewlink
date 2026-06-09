@@ -164,7 +164,7 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(false)
   const [showSignup, setShowSignup] = useState(false)
   const [verifyEmailToken, setVerifyEmailToken] = useState<string | null>(null)
-  const [view, setView] = useState<'projects' | 'services'>('projects')
+  const [view, setView] = useState<'projects' | 'services' | 'ai'>('projects')
   const [servicesRefreshKey, setServicesRefreshKey] = useState(0)
   const [orderTarget, setOrderTarget] = useState<FreelancerService | null>(null)
   const [session, setSession] = useState<Session | null>(() => {
@@ -468,13 +468,13 @@ export default function App() {
             </div>
             <div className="app-header-right">
               <div className="tab-group">
-                {(['projects', 'services'] as const).map((v) => (
+                {(['projects', 'services', 'ai'] as const).map((v) => (
                   <button
                     key={v}
                     className={`tab-item ${view === v ? 'active' : ''}`}
                     onClick={() => setView(v)}
                   >
-                    {v === 'projects' ? '프로젝트' : '서비스'}
+                    {v === 'projects' ? '프로젝트' : v === 'services' ? '서비스' : 'AI 추천'}
                   </button>
                 ))}
               </div>
@@ -650,11 +650,9 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Freelancer: AI + My Applications */}
+                  {/* Freelancer: My Applications */}
                   {role === 'freelancer' && (
                     <>
-                      <AiRecommend token={session?.token ?? null} />
-
                       <div style={{ marginBottom: 20 }}>
                         <div className="section-title">📋 내 수주 현황</div>
                         {loadingPrivate ? (
@@ -727,7 +725,7 @@ export default function App() {
                     )}
                   </div>
                 </>
-              ) : (
+              ) : view === 'services' ? (
                 /* Services View */
                 <>
                   {role === 'freelancer' && session && (
@@ -756,6 +754,9 @@ export default function App() {
                     }}
                   />
                 </>
+              ) : (
+                /* AI View */
+                <AiRecommend token={session?.token ?? null} />
               )}
 
               {orderTarget && session && (
