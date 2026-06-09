@@ -1,7 +1,7 @@
 import { useState, type ChangeEvent } from 'react'
-import { API_BASE } from './apiBase'
-import { readJsonResponse, formatError } from './http'
-import type { FreelancerService } from './FreelancerServiceForm'
+import { API_BASE } from '../api/apiBase'
+import { readJsonResponse, formatError } from '../api/http'
+import type { FreelancerService } from './types'
 
 export default function ServiceOrderDialog({
   service,

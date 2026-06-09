@@ -1,7 +1,7 @@
 import { useState, useEffect, type ChangeEvent } from 'react'
-import { API_BASE } from './apiBase'
-import { readJsonResponse, formatError, formatPrice } from './http'
-import type { FreelancerService } from './FreelancerServiceForm'
+import { API_BASE } from '../api/apiBase'
+import { readJsonResponse, formatError, formatPrice } from '../api/http'
+import type { FreelancerService } from './types'
 
 const CATEGORY_LABELS: Record<string, string> = {
   development: '개발',

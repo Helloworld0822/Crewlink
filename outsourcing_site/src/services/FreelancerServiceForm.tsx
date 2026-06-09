@@ -1,21 +1,7 @@
 import { useState, type ChangeEvent } from 'react'
-import { API_BASE } from './apiBase'
-import { readJsonResponse, formatError } from './http'
-
-export type FreelancerService = {
-  id: string
-  freelancer_id: string
-  title: string
-  description: string
-  category: string
-  skills: string[]
-  price: string
-  delivery_days: number
-  thumbnail_url: string | null
-  is_active: boolean
-  inserted_at: string | null
-  freelancer?: { id: string; name: string; email: string }
-}
+import { API_BASE } from '../api/apiBase'
+import { readJsonResponse, formatError } from '../api/http'
+import type { FreelancerService } from './types'
 
 const CATEGORIES = [
   { value: 'development', label: '개발' },
