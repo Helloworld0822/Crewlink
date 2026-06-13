@@ -6,3 +6,30 @@ _build/
 deps/
 *.swp
 .DS_Store
+
+# OpenCode
+.omo/
+
+# Playwright
+.playwright-mcp/
+
+# Screenshots
+*.png
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Env files
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+priv/static/uploads/
