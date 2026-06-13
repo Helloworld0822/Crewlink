@@ -55,7 +55,7 @@ defmodule SiteBackend.Router do
   alias SiteBackend.Profiles
 
   plug :match
-  plug Plug.Parsers, parsers: [:json], json_decoder: Jason, pass: ["*/*"]
+  plug Plug.Parsers, parsers: [:json, :multipart], json_decoder: Jason, pass: ["*/*"]
   plug SiteBackend.CORSMiddleware
   plug :dispatch
 
@@ -191,6 +191,85 @@ defmodule SiteBackend.Router do
 
       {:error, status, message} ->
         json_error(conn, status, message)
+    end
+  end
+
+  # ── File Upload ───────────────────────────────────────────────────
+
+  @upload_dir "priv/static/uploads"
+  @allowed_types ~w(image/jpeg image/png image/gif image/webp)
+  @max_file_size 5 * 1024 * 1024
+
+  post "/upload" do
+    case authorize_roles(conn, [:client, :freelancer]) do
+      {:ok, _user} ->
+        upload = conn.body_params["file"]
+
+        cond do
+          is_nil(upload) ->
+            json_error(conn, 400, "파일이 없습니다.")
+
+          upload.content_type not in @allowed_types ->
+            json_error(conn, 400, "허용되지 않는 파일 형식입니다. (jpg, png, gif, webp만 가능)")
+
+          upload.path && File.stat!(upload.path).size > @max_file_size ->
+            json_error(conn, 400, "파일 크기가 5MB를 초과합니다.")
+
+          true ->
+            ext = case upload.content_type do
+              "image/jpeg" -> "jpg"
+              "image/png" -> "png"
+              "image/gif" -> "gif"
+              "image/webp" -> "webp"
+              _ -> "bin"
+            end
+            filename = "#{:crypto.strong_rand_bytes(16) |> Base.url_encode64(padding: false)}.#{ext}"
+            dest_dir = Path.join([File.cwd!(), @upload_dir])
+            File.mkdir_p!(dest_dir)
+            dest = Path.join(dest_dir, filename)
+
+            case File.cp(upload.path, dest) do
+              :ok ->
+                url = "/api/uploads/#{filename}"
+                send_json(conn, %{url: url})
+
+              {:error, reason} ->
+                json_error(conn, 500, "파일 저장 실패: #{inspect(reason)}")
+            end
+        end
+
+      {:error, status, message} ->
+        json_error(conn, status, message)
+    end
+  end
+
+  get "/uploads/:filename" do
+    filepath = Path.join([File.cwd!(), @upload_dir, conn.path_params["filename"]])
+
+    if File.exists?(filepath) do
+      content =
+        filepath
+        |> File.read!()
+
+      mime =
+        filepath
+        |> Path.extname()
+        |> String.downcase()
+        |> case do
+          ".jpg" -> "image/jpeg"
+          ".jpeg" -> "image/jpeg"
+          ".png" -> "image/png"
+          ".gif" -> "image/gif"
+          ".webp" -> "image/webp"
+          _ -> "application/octet-stream"
+        end
+
+      conn
+      |> put_resp_content_type(mime)
+      |> put_resp_header("cache-control", "public, max-age=31536000")
+      |> send_resp(200, content)
+    else
+      send_resp(conn, 404, "not found")
     end
   end
 

@@ -14,6 +14,9 @@ defmodule SiteBackend.User do
     field :email_verified, :boolean, default: false
     field :email_verification_token, :string
     field :email_verification_sent_at, :naive_datetime
+    field :birth_date, :date
+    field :gender, Ecto.Enum, values: [:male, :female, :other]
+    field :interests, {:array, :string}, default: []
     field :refresh_token_hash, :string
     field :refresh_token_expires_at, :naive_datetime
     has_many :logins, SiteBackend.Login
@@ -28,7 +31,7 @@ defmodule SiteBackend.User do
 
   def registration_changeset(struct, params) do
     struct
-    |> cast(params, [:email, :password, :name, :account_type])
+    |> cast(params, [:email, :password, :name, :account_type, :birth_date, :gender, :interests])
     |> validate_required([:email, :password, :name, :account_type])
     |> validate_format(:email, ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/,
       message: "이메일 형식이 올바르지 않습니다"

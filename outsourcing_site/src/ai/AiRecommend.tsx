@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent } from 'react'
+import { Bot, Loader2 } from 'lucide-react'
 import { API_BASE } from '../api/apiBase'
-import { readJsonResponse, formatError } from '../api/http'
+import { readJsonResponse, formatError, formatPrice } from '../api/http'
 
 type Project = {
   id: string
@@ -57,104 +58,183 @@ export default function AiRecommend({ token }: { token: string | null }) {
   }
 
   return (
-    <div className="card" style={{ marginBottom: 24 }}>
-      <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <svg width="18" height="18" viewBox="0 0 16 16" fill="var(--accent)"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm9.78-2.22a.75.75 0 0 0-1.06-1.06L7.25 7.69 5.78 6.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"/></svg>
-        <span style={{ fontSize: 15, fontWeight: 600 }}>AI 외주 추천</span>
-      </div>
-
-      <div className="card-body">
-        <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16, marginTop: 0 }}>
-          보유 기술, 희망 예산, 원하는 작업 유형을 입력하면 적합한 프로젝트를 추천해드립니다.
-        </p>
-
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-          <textarea
-            className="form-textarea"
-            value={prompt}
-            onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
-            placeholder="예) React와 TypeScript를 잘 다루고, 예산은 100만원 이상이면 좋겠습니다. 프론트엔드 작업을 원해요."
-            rows={3}
-            style={{ flex: 1, minHeight: 80 }}
-          />
-          <button
-            className="btn btn-primary"
-            onClick={handleRecommend}
-            disabled={loading || !prompt.trim()}
-            style={{ alignSelf: 'flex-end', whiteSpace: 'nowrap' }}
-          >
-            {loading ? '분석 중...' : '추천받기'}
-          </button>
+    <div className="max-w-3xl mx-auto">
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{
+          background: 'var(--color-bg-card)',
+          boxShadow: '0 0 0.5px rgba(0,0,0,0.14), 0 1px 1px rgba(0,0,0,0.24)',
+          borderRadius: '12px',
+        }}
+      >
+        <div
+          className="px-6 py-5"
+          style={{ background: 'var(--color-house-green)' }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(255,255,255,0.15)' }}
+            >
+              <Bot className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2
+                className="text-lg font-bold text-white m-0"
+                style={{ letterSpacing: '-0.01em' }}
+              >
+                AI 외주 추천
+              </h2>
+              <p
+                className="text-sm mt-0.5 m-0"
+                style={{ color: 'rgba(255,255,255,0.70)' }}
+              >
+                보유 기술, 희망 예산, 원하는 작업 유형을 입력하면 적합한 프로젝트를 추천해드립니다.
+              </p>
+            </div>
+          </div>
         </div>
 
-        {error && (
-          <p style={{ marginTop: 12, fontSize: 13, color: 'var(--error)' }}>{error}</p>
-        )}
+        <div className="p-6">
+          <div className="flex gap-3 items-end">
+            <textarea
+              className="flex-1 px-4 py-3 text-sm outline-none transition-colors resize-none"
+              style={{
+                background: 'var(--color-bg-elevated)',
+                border: '1px solid var(--color-border-light)',
+                color: 'var(--color-text)',
+                borderRadius: '8px',
+                letterSpacing: '-0.01em',
+              }}
+              value={prompt}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
+              placeholder="예) React와 TypeScript를 잘 다루고, 예산은 100만원 이상이면 좋겠습니다. 프론트엔드 작업을 원해요."
+              rows={3}
+            />
+            <button
+              onClick={handleRecommend}
+              disabled={loading || !prompt.trim()}
+              className="btn-pill px-5 py-3 text-sm font-semibold transition-all duration-200"
+              style={{
+                background: 'var(--color-primary)',
+                color: '#ffffff',
+                letterSpacing: '-0.01em',
+              }}
+              onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.95)')}
+              onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  분석 중...
+                </span>
+              ) : '추천받기'}
+            </button>
+          </div>
 
-        {result && (
-          <div style={{ marginTop: 20 }}>
-            {result.summary && (
-              <div style={{
-                background: 'var(--accent-light)',
-                borderRadius: 'var(--radius)',
-                padding: '12px 16px',
-                marginBottom: 16,
-                fontSize: 14,
-                color: 'var(--text)',
-              }}>
-                {result.summary}
-              </div>
-            )}
+          {error && (
+            <div
+              className="mt-4 px-4 py-3 text-sm"
+              style={{
+                background: 'var(--color-error-light)',
+                border: '1px solid var(--color-error)',
+                borderRadius: '8px',
+                color: 'var(--color-error)',
+              }}
+            >
+              {error}
+            </div>
+          )}
 
-            {result.recommendations.length === 0 ? (
-              <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>현재 조건에 맞는 프로젝트가 없습니다.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {result.recommendations.map((rec, i) => (
-                  <div
-                    key={rec.project_id}
-                    className="card"
-                    style={{ boxShadow: 'none' }}
-                  >
-                    <div className="card-body" style={{ padding: 14 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: 22,
-                          height: 22,
-                          borderRadius: '50%',
-                          background: 'var(--accent)',
-                          color: 'white',
-                          fontSize: 12,
-                          fontWeight: 'bold',
-                          flexShrink: 0,
-                        }}>{i + 1}</span>
-                        <span style={{ fontWeight: 600, fontSize: 14 }}>
+          {result && (
+            <div className="mt-6">
+              {result.summary && (
+                <div
+                  className="px-4 py-3 rounded-xl text-sm mb-4"
+                  style={{
+                    background: 'var(--color-primary-light)',
+                    border: '1px solid var(--color-primary)',
+                    color: 'var(--color-text)',
+                    borderRadius: '8px',
+                    letterSpacing: '-0.01em',
+                  }}
+                >
+                  {result.summary}
+                </div>
+              )}
+
+              {result.recommendations.length === 0 ? (
+                <p
+                  className="text-sm text-center py-8"
+                  style={{ color: 'var(--color-text-muted)' }}
+                >
+                  현재 조건에 맞는 프로젝트가 없습니다.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {result.recommendations.map((rec, i) => (
+                    <div
+                      key={rec.project_id}
+                      className="rounded-xl p-4 transition-all duration-200"
+                      style={{
+                        background: 'var(--color-bg-card)',
+                        border: '1px solid var(--color-border-light)',
+                        boxShadow: '0 0 0.5px rgba(0,0,0,0.14), 0 1px 1px rgba(0,0,0,0.24)',
+                        borderRadius: '12px',
+                      }}
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                          style={{ background: 'var(--color-primary)' }}
+                        >
+                          {i + 1}
+                        </div>
+                        <span
+                          className="font-semibold text-sm"
+                          style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}
+                        >
                           {rec.project?.title ?? rec.project_id}
                         </span>
                       </div>
                       {rec.project && (
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
+                        <div className="flex gap-2 flex-wrap mb-3">
                           {rec.project.skills.map(s => (
-                            <span key={s} className="chip">{s}</span>
+                            <span
+                              key={s}
+                              className="px-2.5 py-0.5 rounded-full text-xs font-medium"
+                              style={{
+                                background: 'var(--color-primary-light)',
+                                color: 'var(--color-primary)',
+                              }}
+                            >
+                              {s}
+                            </span>
                           ))}
                           {rec.project.budget && (
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)', alignSelf: 'center', marginLeft: 4 }}>
-                              예산: {rec.project.budget}
+                            <span
+                              className="text-xs font-semibold self-center"
+                              style={{ color: 'var(--color-starbucks-green)' }}
+                            >
+                              {formatPrice(rec.project.budget)}
                             </span>
                           )}
                         </div>
                       )}
-                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>{rec.reason}</p>
+                      <p
+                        className="text-sm leading-relaxed m-0"
+                        style={{ color: 'var(--color-text-secondary)', letterSpacing: '-0.01em' }}
+                      >
+                        {rec.reason}
+                      </p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

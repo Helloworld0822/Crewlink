@@ -9,7 +9,7 @@ function getInitialColorMode() {
     return stored
   }
 
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'night' : 'day'
+  return 'night'
 }
 
 function getThemeColors() {

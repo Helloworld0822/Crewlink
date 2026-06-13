@@ -1,4 +1,5 @@
 import { useState, useEffect, type ChangeEvent } from 'react'
+import { Pencil, CheckCircle2, XCircle, Loader2, MapPin, Calendar, DollarSign, Globe, CodeXml, Lock, Save, Wrench, FolderOpen, Link, User } from 'lucide-react'
 import type { UserProfile, ProfileUpdatePayload, PortfolioItem } from './types'
 import { API_BASE } from '../api/apiBase'
 import { readJsonResponse } from '../api/http'
@@ -102,7 +103,7 @@ function ProfileAvatar({
           }}
           title="아바타 URL 변경"
         >
-          ✏️
+          <Pencil className="w-3 h-3" />
         </button>
       )}
       {editing && (
@@ -223,7 +224,7 @@ function PortfolioCard({ item }: { item: PortfolioItem }) {
             rel="noopener noreferrer"
             style={{ fontSize: 12, color: 'var(--accent)', marginTop: 8, display: 'inline-block' }}
           >
-            🔗 링크 보기
+            <Link className="w-3 h-3 inline" /> 링크 보기
           </a>
         )}
       </div>
@@ -370,7 +371,7 @@ function PortfolioEditor({
 // Stat Badge
 // ─────────────────────────────────────────────────────────────────────────────
 
-function StatBadge({ icon, label, value }: { icon: string; label: string; value: string | number | null | undefined }) {
+function StatBadge({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number | null | undefined }) {
   if (!value && value !== 0) return null
   return (
     <div
@@ -537,7 +538,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
 
         {!editing ? (
           <button className="btn btn-primary" onClick={startEdit} disabled={loading}>
-            ✏️ 프로필 수정
+            <Pencil className="w-4 h-4 inline" /> 프로필 수정
           </button>
         ) : (
           <div style={{ display: 'flex', gap: 8 }}>
@@ -545,7 +546,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
               취소
             </button>
             <button className="btn btn-primary" onClick={saveProfile} disabled={saving}>
-              {saving ? '저장 중...' : '💾 저장'}
+              {saving ? '저장 중...' : <><Save className="w-4 h-4 inline" /> 저장</>}
             </button>
           </div>
         )}
@@ -566,13 +567,13 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
             animation: 'fadeIn 0.2s ease',
           }}
         >
-          {statusMsg.type === 'success' ? '✅ ' : '❌ '}{statusMsg.text}
+          {statusMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 inline" /> : <XCircle className="w-4 h-4 inline" />}{statusMsg.text}
         </div>
       )}
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
+          <div style={{ fontSize: 32, marginBottom: 12 }}><Loader2 className="w-8 h-8 animate-spin" /></div>
           <div>프로필을 불러오는 중...</div>
         </div>
       ) : editing ? (
@@ -609,7 +610,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
                       </div>
                     </div>
                     <div>
-                      <label className="form-label">📍 위치</label>
+                      <label className="form-label"><MapPin className="w-4 h-4 inline" /> 위치</label>
                       <input
                         className="form-input"
                         value={form.location ?? ''}
@@ -618,7 +619,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
                       />
                     </div>
                     <div>
-                      <label className="form-label">🌐 웹사이트</label>
+                      <label className="form-label"><Globe className="w-4 h-4 inline" /> 웹사이트</label>
                       <input
                         className="form-input"
                         value={form.website_url ?? ''}
@@ -627,7 +628,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
                       />
                     </div>
                     <div>
-                      <label className="form-label">🐙 GitHub</label>
+                      <label className="form-label"><CodeXml className="w-4 h-4 inline" /> GitHub</label>
                       <input
                         className="form-input"
                         value={form.github_url ?? ''}
@@ -636,7 +637,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
                       />
                     </div>
                     <div>
-                      <label className="form-label">🔒 공개 여부</label>
+                      <label className="form-label"><Lock className="w-4 h-4 inline" /> 공개 여부</label>
                       <label
                         style={{
                           display: 'flex',
@@ -673,7 +674,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
               <div className="card-body">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
                   <div>
-                    <label className="form-label">💰 시간당 요율</label>
+                    <label className="form-label"><DollarSign className="w-4 h-4 inline" /> 시간당 요율</label>
                     <input
                       className="form-input"
                       value={form.hourly_rate ?? ''}
@@ -682,7 +683,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
                     />
                   </div>
                   <div>
-                    <label className="form-label">📅 경력 (년)</label>
+                    <label className="form-label"><Calendar className="w-4 h-4 inline" /> 경력 (년)</label>
                     <input
                       type="number"
                       className="form-input"
@@ -700,7 +701,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
 
                 {/* Skills */}
                 <div>
-                  <label className="form-label">🛠️ 기술 스택</label>
+                  <label className="form-label"><Wrench className="w-4 h-4 inline" /> 기술 스택</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
                     {(form.skills ?? []).map((s) => (
                       <SkillTag key={s} skill={s} onRemove={() => removeSkill(s)} />
@@ -730,7 +731,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
           {isFreelancer && (
             <div className="card">
               <div className="card-header">
-                <div className="section-title" style={{ margin: 0 }}>🗂️ 포트폴리오</div>
+                <div className="section-title flex items-center gap-2" style={{ margin: 0 }}><FolderOpen className="w-4 h-4" /> 포트폴리오</div>
               </div>
               <div className="card-body">
                 <PortfolioEditor
@@ -791,7 +792,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
                       {isFreelancer ? '프리랜서' : '클라이언트'}
                     </span>
                     {!displayProfile.is_public && (
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>🔒 비공개</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}><Lock className="w-3 h-3 inline" /> 비공개</span>
                     )}
                   </div>
 
@@ -814,23 +815,23 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
                   )}
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    <StatBadge icon="📍" label="위치" value={displayProfile.location} />
-                    <StatBadge icon="💰" label="요율" value={displayProfile.hourly_rate} />
-                    <StatBadge icon="📅" label="경력" value={displayProfile.experience_years != null ? `${displayProfile.experience_years}년` : null} />
+                    <StatBadge icon={<MapPin className="w-4 h-4" />} label="위치" value={displayProfile.location} />
+                    <StatBadge icon={<DollarSign className="w-4 h-4" />} label="요율" value={displayProfile.hourly_rate} />
+                    <StatBadge icon={<Calendar className="w-4 h-4" />} label="경력" value={displayProfile.experience_years != null ? `${displayProfile.experience_years}년` : null} />
                   </div>
 
                   <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
                     {displayProfile.website_url && (
                       <a href={displayProfile.website_url} target="_blank" rel="noopener noreferrer">
                         <button className="btn btn-secondary" style={{ fontSize: 12 }}>
-                          🌐 웹사이트
+                          <Globe className="w-4 h-4 inline" /> 웹사이트
                         </button>
                       </a>
                     )}
                     {displayProfile.github_url && (
                       <a href={displayProfile.github_url} target="_blank" rel="noopener noreferrer">
                         <button className="btn btn-secondary" style={{ fontSize: 12 }}>
-                          🐙 GitHub
+                          <CodeXml className="w-4 h-4 inline" /> GitHub
                         </button>
                       </a>
                     )}
@@ -844,7 +845,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
           {isFreelancer && (displayProfile.skills?.length ?? 0) > 0 && (
             <div className="card">
               <div className="card-header">
-                <div className="section-title" style={{ margin: 0 }}>🛠️ 기술 스택</div>
+                <div className="section-title flex items-center gap-2" style={{ margin: 0 }}><Wrench className="w-4 h-4" /> 기술 스택</div>
               </div>
               <div className="card-body">
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -860,7 +861,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
           {isFreelancer && (displayProfile.portfolio_items?.length ?? 0) > 0 && (
             <div className="card">
               <div className="card-header">
-                <div className="section-title" style={{ margin: 0 }}>🗂️ 포트폴리오</div>
+                <div className="section-title flex items-center gap-2" style={{ margin: 0 }}><FolderOpen className="w-4 h-4" /> 포트폴리오</div>
               </div>
               <div className="card-body">
                 <div
@@ -890,7 +891,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
                 color: 'var(--text-muted)',
               }}
             >
-              <div style={{ fontSize: 36, marginBottom: 10 }}>👤</div>
+              <div style={{ fontSize: 36, marginBottom: 10 }}><User className="w-9 h-9" /></div>
               <div style={{ fontWeight: 600, marginBottom: 6 }}>프로필이 비어있습니다</div>
               <div style={{ fontSize: 13 }}>
                 프로필 수정 버튼을 클릭해 자기소개, 기술 스택, 포트폴리오를 추가해보세요.

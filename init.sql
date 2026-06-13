@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS users (
   email_verification_sent_at timestamp,
   refresh_token_hash text,
   refresh_token_expires_at timestamp,
+  birth_date date,
+  gender text,
+  interests text[] NOT NULL DEFAULT ARRAY[]::text[],
   inserted_at timestamp NOT NULL DEFAULT now(),
   updated_at timestamp NOT NULL DEFAULT now()
 );

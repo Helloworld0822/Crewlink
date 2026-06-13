@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent } from 'react'
+import { Mail } from 'lucide-react'
 import { API_BASE } from '../api/apiBase'
 import { readJsonResponse, formatHttpError } from '../api/http'
 
@@ -83,7 +84,7 @@ export default function SignUpPanel({ onClose }: { onClose: () => void }) {
       <div className="modal-overlay" onClick={onClose}>
         <div className="modal-card" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
           <div style={{ padding: 32, textAlign: 'center' }}>
-            <div style={{ fontSize: 40, marginBottom: 16 }}>📧</div>
+            <div style={{ fontSize: 40, marginBottom: 16 }}><Mail /></div>
             <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>이메일 인증이 필요합니다</h2>
             <p style={{ marginTop: 10, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6 }}>
               <strong>{email}</strong>로 인증 메일을 발송했습니다.<br />

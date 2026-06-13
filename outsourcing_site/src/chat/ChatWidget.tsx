@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { MessageCircle, X } from 'lucide-react'
 import { Button, TextInput } from '@primer/react'
 import { API_BASE } from '../api/apiBase'
 import { readJsonResponse } from '../api/http'
@@ -204,7 +205,7 @@ export default function ChatWidget({ token, refreshToken, userId, userRole }: Pr
       )}
 
       <button className="chat-fab" onClick={() => setIsOpen((prev) => !prev)}>
-        {isOpen ? '✕' : '💬'}
+        {isOpen ? <X size={20} /> : <MessageCircle size={20} />}
       </button>
     </>
   )
