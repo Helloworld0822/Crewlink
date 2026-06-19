@@ -2,9 +2,18 @@ defmodule SiteBackend.Application do
   @moduledoc false
   use Application
 
+  @default_shutdown_timeout 30_000
+
   def start(_type, _args) do
     port = String.to_integer(System.get_env("PORT") || "4000")
     ws_port = String.to_integer(System.get_env("WS_PORT") || "4001")
+
+    shutdown_timeout =
+      String.to_integer(
+        System.get_env("SHUTDOWN_TIMEOUT") || "#{@default_shutdown_timeout}"
+      )
+
+    Application.put_env(:site_backend, :shutdown_timeout, shutdown_timeout)
 
     for app <- [:telemetry, :jason, :plug, :plug_cowboy, :cowboy, :ranch, :ecto_sql, :postgrex, :bcrypt_elixir] do
       {:ok, _} = Application.ensure_all_started(app)
@@ -14,31 +23,42 @@ defmodule SiteBackend.Application do
 
     children = [
       SiteBackend.Repo,
-      {Finch, name: SiteBackend.Finch},
       SiteBackend.PubSub,
-      SiteBackend.RateLimiter
+      SiteBackend.RateLimiter,
+      {Finch, name: SiteBackend.Finch},
+      SiteBackend.Shutdown,
+      {SiteBackend.WSListener, [port: ws_port, shutdown_timeout: shutdown_timeout]}
     ]
 
-    opts = [strategy: :one_for_one, name: SiteBackend.Supervisor]
-    with {:ok, sup} <- Supervisor.start_link(children, opts),
-         {:ok, _pid} <- Plug.Cowboy.http(SiteBackend.Router, [], ip: {0, 0, 0, 0}, port: port),
-         {:ok, _pid} <- start_websocket_server(ws_port) do
+    supervisor_opts = [strategy: :one_for_one, name: SiteBackend.Supervisor]
+
+    with {:ok, sup} <- Supervisor.start_link(children, supervisor_opts),
+         {:ok, _http_pid} <-
+           Plug.Cowboy.http(
+             SiteBackend.Router,
+             [],
+             ip: {0, 0, 0, 0},
+             port: port
+           ) do
       {:ok, sup}
     end
   end
 
-  defp start_websocket_server(port) do
-    dispatch = :cowboy_router.compile([
-      {:_, [
-        {"/ws", SiteBackend.WebSocketHandler, %{}}
-      ]}
-    ])
+  @doc false
+  def prep_stop(state) do
+    # Synchronously begin the drain: set the flag and broadcast to all
+    # subscribers (e.g. active WebSocket connections) so they can finish
+    # in-flight work and emit close frames before the supervision tree
+    # is torn down.
+    SiteBackend.Shutdown.__begin_drain__()
 
-    :cowboy.start_clear(
-      :ws_listener,
-      [{:port, port}],
-      %{env: %{dispatch: dispatch}}
-    )
+    # Give subscribers a brief window to react (send close frames, finish
+    # in-flight HTTP requests, flush writes, etc.) before the application
+    # controller proceeds with the supervised shutdown.
+    timeout = Application.get_env(:site_backend, :shutdown_timeout, 30_000)
+    SiteBackend.Shutdown.await_drain_broadcast(timeout)
+
+    state
   end
 
   # In production, refuse to start with default/weak secrets.

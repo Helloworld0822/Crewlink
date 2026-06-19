@@ -2,20 +2,20 @@ defmodule SiteBackend.Repo.Migrations.AddRefreshTokenFields do
   use Ecto.Migration
 
   def up do
-    alter table(:users) do
-      add :refresh_token_hash, :string
-      add :refresh_token_expires_at, :naive_datetime
-    end
+    execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS refresh_token_hash varchar(255)")
+    execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS refresh_token_expires_at timestamp(0)")
 
-    create unique_index(:users, [:refresh_token_hash], where: "refresh_token_hash IS NOT NULL")
+    execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS users_refresh_token_hash_index
+      ON users (refresh_token_hash)
+      WHERE refresh_token_hash IS NOT NULL
+    """)
   end
 
   def down do
-    drop_if_exists index(:users, [:refresh_token_hash])
+    execute("DROP INDEX IF EXISTS users_refresh_token_hash_index")
 
-    alter table(:users) do
-      remove :refresh_token_hash
-      remove :refresh_token_expires_at
-    end
+    execute("ALTER TABLE users DROP COLUMN IF EXISTS refresh_token_expires_at")
+    execute("ALTER TABLE users DROP COLUMN IF EXISTS refresh_token_hash")
   end
 end

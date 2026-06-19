@@ -1,7 +1,7 @@
 defmodule SiteBackend.WebSocketHandler do
   @behaviour :cowboy_websocket
 
-  alias SiteBackend.{Auth, PubSub, Repo, User}
+  alias SiteBackend.{Auth, PubSub, Repo, Shutdown, User}
 
   def init(req, state) do
     access_token = extract_param(req, "token")
@@ -18,6 +18,7 @@ defmodule SiteBackend.WebSocketHandler do
 
   def websocket_init(%{user_id: user_id} = state) do
     PubSub.subscribe(user_id, self())
+    Shutdown.subscribe()
 
     {:ok, state}
   end
@@ -32,6 +33,17 @@ defmodule SiteBackend.WebSocketHandler do
 
   def websocket_info({:broadcast, message}, state) do
     {:reply, {:text, message}, state}
+  end
+
+  def websocket_info({:site_backend, :draining}, state) do
+    shutdown_payload =
+      Jason.encode!(%{
+        type: "server_shutdown",
+        reason: "graceful",
+        retry_after: 5
+      })
+
+    {:reply, {:close, 1001, shutdown_payload}, state}
   end
 
   def websocket_info(_info, state) do
