@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ChangeEvent } from 'react'
+import { useState, useEffect, useRef, useCallback, type ChangeEvent } from 'react'
 import { Loader2, User, Camera, FileText, Globe, CodeXml, Wrench } from 'lucide-react'
 import type { UserProfile } from './types'
 import { API_BASE } from '../api/apiBase'
@@ -29,11 +29,7 @@ export default function FreelancerSetup({ token, onComplete, onSkip }: Props) {
   const [skills, setSkills] = useState<string[]>([])
   const [skillInput, setSkillInput] = useState('')
 
-  useEffect(() => {
-    fetchProfile()
-  }, [token])
-
-  async function fetchProfile() {
+  const fetchProfile = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`${API_BASE}/api/profile`, {
@@ -53,7 +49,12 @@ export default function FreelancerSetup({ token, onComplete, onSkip }: Props) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async profile load hydrates the setup form.
+    void fetchProfile()
+  }, [fetchProfile])
 
   async function handleFileUpload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]

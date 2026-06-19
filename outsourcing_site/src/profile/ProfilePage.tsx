@@ -1,4 +1,4 @@
-import { useState, useEffect, type ChangeEvent } from 'react'
+import { useState, useEffect, useCallback, type ChangeEvent } from 'react'
 import { Pencil, CheckCircle2, XCircle, Loader2, MapPin, Calendar, DollarSign, Globe, CodeXml, Lock, Save, Wrench, FolderOpen, Link, User } from 'lucide-react'
 import type { UserProfile, ProfileUpdatePayload, PortfolioItem } from './types'
 import { API_BASE } from '../api/apiBase'
@@ -413,18 +413,7 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
   const [form, setForm] = useState<ProfileUpdatePayload>({})
   const [skillInput, setSkillInput] = useState('')
 
-  useEffect(() => {
-    fetchProfile()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token])
-
-  useEffect(() => {
-    if (!statusMsg) return
-    const t = setTimeout(() => setStatusMsg(null), 3500)
-    return () => clearTimeout(t)
-  }, [statusMsg])
-
-  async function fetchProfile() {
+  const fetchProfile = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`${API_BASE}/api/profile`, {
@@ -438,7 +427,18 @@ export default function ProfilePage({ token, onClose }: ProfilePageProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async profile load owns loading/result state.
+    void fetchProfile()
+  }, [fetchProfile])
+
+  useEffect(() => {
+    if (!statusMsg) return
+    const t = setTimeout(() => setStatusMsg(null), 3500)
+    return () => clearTimeout(t)
+  }, [statusMsg])
 
   function startEdit() {
     if (!profile) return

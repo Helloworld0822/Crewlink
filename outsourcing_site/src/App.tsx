@@ -108,7 +108,11 @@ export default function App() {
   const [skillFilter, setSkillFilter] = useState<string | null>(null)
   const [showLogin, setShowLogin] = useState(false)
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname)
-  const [verifyEmailToken, setVerifyEmailToken] = useState<string | null>(null)
+  const [verifyEmailToken, setVerifyEmailToken] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
+    return token && window.location.pathname === '/verify-email' ? token : null
+  })
   const [view, setView] = useState<'projects' | 'services' | 'ai' | 'profile' | 'freelancers'>('projects')
   const [servicesRefreshKey, setServicesRefreshKey] = useState(0)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
@@ -128,13 +132,6 @@ export default function App() {
     return 'day'
   })
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const token = params.get('token')
-    if (token && window.location.pathname === '/verify-email') {
-      setVerifyEmailToken(token)
-    }
-  }, [])
 
   useEffect(() => {
     const handlePopState = () => setCurrentPath(window.location.pathname)
@@ -261,12 +258,27 @@ export default function App() {
     finally { setLoadingPrivate(false) }
   }, [apiRequest])
 
-  useEffect(() => { loadPublicProjects() }, [loadPublicProjects])
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial async project load toggles loading state.
+    void loadPublicProjects()
+  }, [loadPublicProjects])
 
   useEffect(() => {
-    if (!session) { setClientProjects([]); setFreelancerApplications([]); return }
-    if (session.user.account_type === 'client') { loadClientProjects(); setFreelancerApplications([]); return }
-    if (session.user.account_type === 'freelancer') { loadFreelancerApplications(); setClientProjects([]) }
+    if (!session) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale role-specific data when auth state changes.
+      setClientProjects((prev) => (prev.length === 0 ? prev : []))
+      setFreelancerApplications((prev) => (prev.length === 0 ? prev : []))
+      return
+    }
+    if (session.user.account_type === 'client') {
+      void loadClientProjects()
+      setFreelancerApplications((prev) => (prev.length === 0 ? prev : []))
+      return
+    }
+    if (session.user.account_type === 'freelancer') {
+      void loadFreelancerApplications()
+      setClientProjects((prev) => (prev.length === 0 ? prev : []))
+    }
   }, [session, loadClientProjects, loadFreelancerApplications])
 
   function handleSession(sessionValue: Session) {
@@ -458,7 +470,7 @@ export default function App() {
                   <p style={{ color: 'var(--color-text-white-soft)' }}>원하는 기술을 보유한 프리랜서를 찾아 바로 연락해보세요.</p>
                 </div>
                 {selectedFreelancerId ? (
-                  <PublicProfileView userId={selectedFreelancerId} token={session?.token ?? null} onBack={() => setSelectedFreelancerId(null)} onContactFreelancer={(_id) => { if (!session) { setShowLogin(true); return }; setStatusMessage('프리랜서에게 채팅을 요청했습니다.') }} />
+                  <PublicProfileView userId={selectedFreelancerId} token={session?.token ?? null} onBack={() => setSelectedFreelancerId(null)} onContactFreelancer={() => { if (!session) { setShowLogin(true); return }; setStatusMessage('프리랜서에게 채팅을 요청했습니다.') }} />
                 ) : (
                   <FreelancerList token={session?.token ?? null} onSelectFreelancer={(id) => setSelectedFreelancerId(id)} />
                 )}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Search, MapPin, Calendar, Loader2 } from 'lucide-react'
 import type { UserProfile } from './types'
 import { API_BASE } from '../api/apiBase'
@@ -53,11 +53,7 @@ export default function FreelancerList({ token, onSelectFreelancer }: Freelancer
   const [query, setQuery] = useState('')
   const [skillFilter, setSkillFilter] = useState('')
 
-  useEffect(() => {
-    fetchProfiles()
-  }, [query, skillFilter])
-
-  async function fetchProfiles() {
+  const fetchProfiles = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
@@ -78,7 +74,12 @@ export default function FreelancerList({ token, onSelectFreelancer }: Freelancer
     } finally {
       setLoading(false)
     }
-  }
+  }, [query, skillFilter, token])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async profile load owns loading/result state.
+    void fetchProfiles()
+  }, [fetchProfiles])
 
   const allSkills = Array.from(new Set(profiles.flatMap((p) => p.skills ?? [])))
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, type ChangeEvent } from 'react'
+import { useState, useEffect, useMemo, type ChangeEvent } from 'react'
 import { Users } from 'lucide-react'
 import { API_BASE } from '../api/apiBase'
 import { readJsonResponse, formatPrice } from '../api/http'
@@ -37,6 +37,15 @@ const DUMMY_SERVICES: FreelancerService[] = [
   },
 ]
 
+const CATEGORY_MAP: Record<string, string> = {
+  web: 'development',
+  mobile: 'development',
+  ai: 'development',
+  design: 'design',
+  backend: 'development',
+  cloud: 'development',
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   development: '개발',
   design: '디자인',
@@ -63,21 +72,17 @@ export default function FreelancerServiceList({
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<string | null>(null)
 
-  // Map category section IDs to service category IDs
-  const CATEGORY_MAP: Record<string, string> = {
-    web: 'development',
-    mobile: 'development',
-    ai: 'development',
-    design: 'design',
-    backend: 'development',
-    cloud: 'development',
-  }
+  const mappedInitialCategory = useMemo(
+    () => (initialCategory ? CATEGORY_MAP[initialCategory] ?? initialCategory : null),
+    [initialCategory],
+  )
 
   useEffect(() => {
-    if (initialCategory) {
-      setCategory(CATEGORY_MAP[initialCategory] ?? initialCategory)
+    if (mappedInitialCategory) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync category from route-selected section.
+      setCategory((prev) => (prev === mappedInitialCategory ? prev : mappedInitialCategory))
     }
-  }, [initialCategory])
+  }, [mappedInitialCategory])
 
   useEffect(() => {
     let cancelled = false
