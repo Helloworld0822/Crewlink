@@ -45,7 +45,7 @@ services:
       DB_PASSWORD: postgres
       DB_HOST: db
       DB_PORT: 5432
-      DB_POOL_SIZE: "10"
+      DB_POOL_SIZE: "20"
       DB_SSL: "false"
       DB_LOG_LEVEL: "false"
       REDIS_URL: "redis://redis:6379/0"

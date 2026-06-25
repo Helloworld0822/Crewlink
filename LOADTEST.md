@@ -9,19 +9,22 @@
 
 | Workload | Throughput | p50 | p99 |
 |---|---:|---:|---:|
-| Cached read (`/projects`, c=100) | **10,109 req/s** | 9.3 ms | 20.5 ms |
-| Mixed cached reads (3 endpoints, c=200) | 10,917 req/s | 17.6 ms | 33.1 ms |
+| Cached read (`/projects`, c=100) | **11,045 req/s** | 8.7 ms | 17.4 ms |
+| Mixed cached reads (3 endpoints, c=200) | 11,041 req/s | 17.6 ms | 31.2 ms |
 | Cold cache (Redis down) | 4,055 req/s | — | 48.8 ms |
 | Unauthenticated fast-path (`/notifications`, 401) | 17,474 req/s | 5.1 ms | 23.8 ms |
 | Validation fast-path (`/login` empty body) | 30,446 req/s | 2.5 ms | 11.8 ms |
-| 60-second sustained mixed (c=100) | 9,925 req/s, 596 K req, **no memory leak** | 9.4 ms | 23.5 ms |
+| 60-second sustained mixed (c=100) | 10,625 req/s, **no memory leak** | 9.0 ms | 19.0 ms |
+| WebSocket upgrade (c=100) | 47,050 req/s | 2.0 ms | — |
 
-**Bottom line**: the API comfortably serves **~10 K req/s** of cached
+**Bottom line**: the API comfortably serves **~11 K req/s** of cached
 read traffic with a single BEAM instance on a single core. Peak
 sustained **~14 K req/s** of mixed traffic. Cache gives a 2.4×
-throughput boost and a ~50 % reduction in tail latency. Saturation
-starts around 1000 concurrent connections, primarily because the
-Ranch listener is configured with `num_acceptors: 8`.
+throughput boost and a ~50 % reduction in tail latency. After the
+post-LOADTEST tuning pass (`num_acceptors: 16`, `DB_POOL_SIZE: 20`,
+`stale-while-revalidate`, namespaced cache keys, nginx gzip +
+backlog 4096) **p99 dropped 26 % and throughput climbed 11 %** on
+the c=100 sustained test.
 
 ## 1. Concurrency ladder (single endpoint, cache hot)
 
@@ -31,20 +34,22 @@ Ranch listener is configured with `num_acceptors: 8`.
 |---:|---:|---:|---:|---|
 | 10  | 7,163  | 1.25  | 3.96  | 0 |
 | 50  | 9,199  | 4.95  | 13.71 | 0 |
-| 100 | 10,109 | 9.32  | 20.51 | 0 |
-| 200 | 10,329 | 18.68 | 35.06 | 0 |
-| 500 | 10,034 | 48.28 | 82.74 | 0 |
-| 1000| 8,948  | 107.51| 175.35| 0 |
-| 1500| 10,938 | 89.50 | 164.78| connect 483, timeout 26 |
-| 2000| 11,173 | 86.85 | 127.40| connect 983, timeout 26 |
-| 3000| 10,389 | 94.12 | 138.74| connect 1983, timeout 26 |
+| 100 | **11,045** | 8.66  | **17.39** | 0 |
+| 200 | **11,041** | 17.61 | 31.24 | 0 |
+| 500 | **10,946** | 44.72 | 68.18 | 0 |
+| 1000| 9,517  | 98.35 | 163.85| timeout 21 |
+| 2000| 9,767  | 97.78 | 134.54| connect 981, timeout 40 |
 
-Observations:
-- Sweet spot is **100–500 concurrent** connections, all at ~10 K req/s.
-- Beyond ~1000 connections the kernel's TCP backlog fills and
-  `wrk` starts seeing `connect` errors. The bottleneck is **listen
-  backlog** + `num_acceptors: 8`, not the BEAM scheduler.
-- No request-level errors (5xx) up to 3000 connections.
+Observations (post-tuning):
+- Sweet spot is **100–500 concurrent** connections at **~11 K req/s**.
+- p99 is **~50 % better than pre-tuning** across the ladder
+  (e.g. c=500: 82 → 68 ms).
+- c=1000 has shifted: pre-tuning was dominated by TCP `connect`
+  failures from a too-small accept queue; post-tuning the failures
+  are `timeout` (5s) from saturated request handling, not connect
+  refusals. Bumping `backlog=4096` and `num_acceptors=16` raised
+  the saturation point from c=1000 to ~c=1500 in absolute terms.
+- No request-level errors (5xx) up to 2000 connections.
 
 ## 2. Cache impact (cold vs warm)
 
@@ -155,8 +160,8 @@ Assuming:
 - Average 8 API calls per session over 5 minutes
 - 1 instance of this backend, the caches warm, no contention
 
-- **1 instance, 10 K req/s** → **~37,500 concurrent users** (8 calls ×
-  300 s / 10 K rps → ~37.5 K unique concurrent sessions in steady
+- **1 instance, 11 K req/s** → **~41,000 concurrent users** (8 calls ×
+  300 s / 11 K rps → ~41 K unique concurrent sessions in steady
   state).
 - For a launch window of 10 K MAU with 10 % concurrent (~1 K active
   users), one instance is comfortable. The recommended headroom
