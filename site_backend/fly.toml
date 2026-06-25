@@ -1,0 +1,117 @@
+# Fly.io configuration for the Crewlink Elixir backend.
+# Docs: https://fly.io/docs/reference/configuration/
+#
+# First-time setup:
+#   1. Install flyctl: https://fly.io/docs/hands-on/install-flyctl/
+#   2. Sign in:        fly auth signup  (or `fly auth login`)
+#   3. Launch:         fly launch --no-deploy --copy-config
+#      (answer "no" to "Would you like to deploy now?")
+#      (use the existing Dockerfile at ./site_backend/Dockerfile)
+#   4. Provision Postgres (Neon) and set:
+#        fly secrets set \
+#          DB_NAME=neondb DB_USER=neondb DB_PASSWORD=... \
+#          DB_HOST=ep-xxx.us-east-2.aws.neon.tech DB_PORT=5432 \
+#          DB_SSL=true \
+#          DB_CACERTFILE=/etc/ssl/neon-ca.pem \
+#          JWT_SECRET=... SECRET_KEY_BASE=... \
+#          CORS_ALLOWED_ORIGINS=https://crewlink.io,https://www.crewlink.io \
+#          OPENAI_API_KEY=... RESEND_API_KEY=... \
+#          EMAIL_FROM=Crewlink <no-reply@crewlink.io> \
+#          EMAIL_VERIFICATION_BASE_URL=https://crewlink.io
+#   5. Deploy:          fly deploy
+#
+# Operational commands:
+#   fly status                # instance health
+#   fly logs                  # tail logs
+#   fly ssh console           # shell into a running instance
+#   fly releases              # list releases
+#   fly rollback              # roll back to the previous release
+#   fly secrets list          # list secret env vars
+
+app = "crewlink-backend"
+primary_region = "nrt"   # Tokyo – closest to the bulk of users.
+kill_signal = "SIGTERM"
+kill_timeout = "35s"     # > SiteBackend.Shutdown grace period (30s)
+
+# Build the release image from the existing Dockerfile in this directory.
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  # Run DB migrations as a one-off before the rolling deploy lands.
+  release_command = "/app/_release/bin/site_backend eval 'Application.ensure_all_started(:site_backend)' && /app/_release/bin/site_backend migrate"
+  strategy = "rolling"
+
+[env]
+  PORT = "4000"
+  WS_PORT = "4001"
+  MIX_ENV = "prod"
+  SHUTDOWN_TIMEOUT = "30000"
+  DB_POOL_SIZE = "10"
+  DB_SSL = "true"
+  DB_LOG_LEVEL = "false"
+  ECTO_IPV6 = "true"
+  # Fly proxies the public hostname to the app's internal port 4000.
+  PHX_HOST = "crewlink-backend.fly.dev"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 4000
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 250
+    soft_limit = 200
+
+  [[services.tcp_checks]]
+    grace_period = "10s"
+    interval = "30s"
+    timeout = "5s"
+
+  [[services.http_checks]]
+    path = "/api/projects"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "20s"
+    method = "get"
+    protocol = "http"
+
+# WebSocket listener: bind directly on a public port.
+[[services]]
+  protocol = "tcp"
+  internal_port = 4001
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 4001
+    handlers = ["http"]
+
+  [[services.http_checks]]
+    path = "/ws"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "20s"
+    method = "get"
+    protocol = "http"
+
+[mounts]
+  # Persistent volume for user-uploaded files. Created on first deploy with:
+  #   fly volumes create backend_uploads --region nrt --size 1
+  source = "backend_uploads"
+  destination = "/app/priv/static/uploads"

@@ -1,3 +1,4 @@
+import { API_BASE } from './apiBase'
 import type { Session, SessionUser } from './types'
 
 export async function readJsonResponse<T>(res: Response): Promise<T | null> {
@@ -168,7 +169,7 @@ async function tryRefreshToken(): Promise<boolean> {
 
   refreshInFlight = (async () => {
     try {
-      const res = await fetch('/api/refresh', {
+      const res = await fetch(`${API_BASE}/api/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refreshToken }),
@@ -225,7 +226,10 @@ export async function apiRequest<T = unknown>(path: string, options: ApiOptions 
       const token = overrideToken ?? getStoredToken()
       if (token) finalHeaders['Authorization'] = `Bearer ${token}`
     }
-    return fetch(path, { ...rest, headers: finalHeaders })
+    const url = path.startsWith('http')
+      ? path
+      : `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`
+    return fetch(url, { ...rest, headers: finalHeaders })
   }
 
   let res = await doFetch()
