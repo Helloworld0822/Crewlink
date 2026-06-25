@@ -55,6 +55,7 @@ defmodule SiteBackend.Router do
   alias SiteBackend.Profiles
 
   plug :match
+  plug Plug.RequestId
   plug Plug.Parsers,
     parsers: [:json, :multipart],
     json_decoder: Jason,

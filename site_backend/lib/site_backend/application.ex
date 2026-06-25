@@ -49,7 +49,9 @@ defmodule SiteBackend.Application do
              # reuse them. 75s keeps us under common intermediary
              # defaults (ALB: 60s, nginx: 75s, Cloudflare: 100s).
              protocol_options: [idle_timeout: 75_000, max_keepalive: 100],
-             transport_options: [num_acceptors: 8, max_connections: 16_384]
+             # 16 acceptors soak up connect bursts up to ~3-4K concurrent
+             # before the kernel listen backlog starts to reject.
+             transport_options: [num_acceptors: 16, max_connections: 16_384]
            ) do
       {:ok, sup}
     end

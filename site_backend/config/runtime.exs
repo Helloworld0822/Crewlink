@@ -27,7 +27,10 @@ base_repo_config = [
   password: System.get_env("DB_PASSWORD") || "postgres",
   hostname: System.get_env("DB_HOST") || "localhost",
   port: String.to_integer(System.get_env("DB_PORT") || "5432"),
-  pool_size: String.to_integer(System.get_env("DB_POOL_SIZE") || "10"),
+  # 20 connections per backend instance matches the measured
+  # sweet spot for the cached-read hot path. Raise further only
+  # if you see DB saturation in metrics.
+  pool_size: String.to_integer(System.get_env("DB_POOL_SIZE") || "20"),
   ssl: db_ssl,
   log: db_log_level
 ]

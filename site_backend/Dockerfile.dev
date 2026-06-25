@@ -6,6 +6,11 @@ FROM elixir:latest
 
 ENV MIX_ENV=dev
 
+# Erlang runtime flags. `:smp auto` lets the BEAM pick a scheduler
+# count from the container's CPU quota. +JPperf turns on
+# scheduler-wakeup perf counters which is useful for diagnostics.
+ENV ERL_FLAGS="+JPperf true"
+
 # Build deps: postgres client + libpq for the elixir driver.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl gnupg build-essential git libpq-dev postgresql-client inotify-tools erlang-dev \
