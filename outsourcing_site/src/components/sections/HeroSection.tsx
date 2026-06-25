@@ -54,15 +54,19 @@ export default function HeroSection({ onSearch, onTagClick, onQueryChange }: Pro
             </div>
             <button
               onClick={handleSearch}
-              className="btn-pill px-5 py-2.5 text-sm"
+              className="btn-pill cursor-pointer px-5 py-2.5 text-sm transition-all duration-150 hover:scale-105"
               style={{ background: '#ffffff', color: '#1E3932' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#f0f0f0')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#ffffff')}
             >
               검색
             </button>
           </div>
           <button
-            className="btn-pill px-5 py-2.5 text-sm whitespace-nowrap"
+            className="btn-pill cursor-pointer px-5 py-2.5 text-sm whitespace-nowrap transition-all duration-150 hover:scale-105"
             style={{ background: '#00754A', color: '#ffffff' }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#008C5A')}
+            onMouseLeave={e => (e.currentTarget.style.background = '#00754A')}
           >
             <Bot className="w-4 h-4 inline" /> AI 견적 요청
           </button>
@@ -73,8 +77,19 @@ export default function HeroSection({ onSearch, onTagClick, onQueryChange }: Pro
             <button
               key={tag}
               onClick={() => onTagClick(tag)}
-              className="px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-200 text-white"
-              style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.15)' }}
+              className="cursor-pointer px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-200 text-white hover:scale-105 hover:text-white"
+              style={{
+                background: 'rgba(255,255,255,0.10)',
+                border: '1px solid rgba(255,255,255,0.15)'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.20)'
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.30)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.10)'
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
+              }}
             >
               {tag}
             </button>
